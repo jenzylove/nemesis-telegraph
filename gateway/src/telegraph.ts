@@ -7,6 +7,7 @@ import type { GatewayConfig } from "./config.js";
 import type { MinerRegistry } from "./registry.js";
 import { decodePaymentResponse, findSettlementReference, hashRaw, normalizeResponse, type TransportReceipt } from "./receipt.js";
 import { SerialQueue, SpendLedger, SpendLimitExceeded } from "./spend.js";
+import { DurableDailySpend } from "./durable-spend.js";
 
 export type EnrichRequest = {
   idempotency_key: string;
@@ -28,7 +29,8 @@ export class TelegraphClient {
     private readonly config: GatewayConfig,
     private readonly registry: MinerRegistry,
     private readonly ledger: SpendLedger,
-    private readonly fetchImpl: typeof fetch = fetch
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly durable: DurableDailySpend | null = null
   ) {
     this.payer =
       config.payerKey && /^0x[0-9a-fA-F]{64}$/.test(config.payerKey)
@@ -38,6 +40,10 @@ export class TelegraphClient {
 
   get payerAddress(): string | null {
     return this.payer?.address ?? null;
+  }
+
+  async durableSpend(): Promise<number | null> {
+    return this.durable?.configured ? this.durable.total() : null;
   }
 
   status() {
@@ -173,6 +179,28 @@ export class TelegraphClient {
       throw error;
     }
 
+    // The in-memory ledger only knows this container's lifetime. The durable
+    // counter is what actually bounds the day, and a counter that cannot be
+    // read is a refusal: unknown spend is never treated as no spend.
+    if (this.durable?.configured) {
+      const spentToday = await this.durable.total();
+      if (spentToday === null) {
+        return {
+          ...fail("SPEND_LEDGER_UNAVAILABLE", "Daily spend could not be read, so payment is refused"),
+          quoted_cost_usdc: offer.amount_usdc
+        };
+      }
+      if (spentToday + quotedUsd > this.config.dailyUsd) {
+        return {
+          ...fail(
+            "SPEND_LIMIT_EXCEEDED",
+            "Daily spend would reach " + (spentToday + quotedUsd).toFixed(6) + ", over the " + this.config.dailyUsd + " ceiling"
+          ),
+          quoted_cost_usdc: offer.amount_usdc
+        };
+      }
+    }
+
     const paymentClient = x402Client.fromConfig({
       // The x402 client types the network as a CAIP-2 template literal; the
       // configured value is checked against the challenge on every call.
@@ -235,7 +263,9 @@ export class TelegraphClient {
 
     const normalized = normalizeResponse(parsed, request.intent);
     // Spend is recorded against what settled, not what was quoted.
-    this.ledger.record(caseEventKey, normalized.reported_cost_usd ?? quotedUsd);
+    const settledUsd = normalized.reported_cost_usd ?? quotedUsd;
+    this.ledger.record(caseEventKey, settledUsd);
+    if (this.durable?.configured) await this.durable.add(settledUsd);
     this.recentFailures = 0;
     this.lastSuccess = { at: new Date().toISOString(), miner_id: normalized.miner_id, cost_usd: normalized.reported_cost_usd };
 

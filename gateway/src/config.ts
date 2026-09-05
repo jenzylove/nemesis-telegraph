@@ -17,6 +17,8 @@ export type GatewayConfig = {
   requestTimeoutMs: number;
   registryTtlMs: number;
   internalToken: string;
+  firestoreProject: string;
+  firestoreDatabase: string;
   payerKey?: string;
   settlementRpcUrl: string;
   port: number;
@@ -61,6 +63,10 @@ export function loadConfig(): GatewayConfig {
     requestTimeoutMs: num("TELEGRAPH_REQUEST_TIMEOUT_MS", 45_000),
     registryTtlMs: num("TELEGRAPH_REGISTRY_TTL_MS", 300_000),
     internalToken: process.env.TELEGRAPH_INTERNAL_TOKEN || "",
+    // The daily ceiling is only meaningful if it outlives the container, which
+    // on Cloud Run is torn down whenever the service goes idle.
+    firestoreProject: process.env.FIRESTORE_PROJECT_ID || "",
+    firestoreDatabase: process.env.FIRESTORE_DATABASE || "",
     payerKey: readPayerKey(),
     settlementRpcUrl: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
     port: num("PORT", 8081)

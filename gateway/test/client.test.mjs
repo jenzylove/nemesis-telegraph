@@ -145,3 +145,42 @@ test("enrichments queue rather than paying in parallel", async () => {
   await Promise.all([client.enrich(request), client.enrich(request), client.enrich(request)]);
   assert.equal(peak, 1);
 });
+
+
+test("an unreadable durable ledger refuses to pay rather than assuming zero", async () => {
+  const { DurableDailySpend } = await import("../dist/durable-spend.js");
+  const unreachable = new DurableDailySpend("p", "db", "telegraph_spend", async () => {
+    throw new Error("metadata server unavailable");
+  });
+  const registry = new MinerRegistry(config, async () => challengeResponse(), () => 0);
+  const client = new TelegraphClient(
+    config,
+    registry,
+    new SpendLedger({ perCallUsd: 0.01, perCaseEventUsd: 0.03, dailyUsd: 1 }),
+    async () => challengeResponse(),
+    unreachable
+  );
+  const receipt = await client.enrich(request);
+  assert.equal(receipt.error_code, "SPEND_LEDGER_UNAVAILABLE");
+  assert.equal(receipt.payment, null);
+});
+
+test("a durable total already at the ceiling blocks a fresh container", async () => {
+  const { DurableDailySpend } = await import("../dist/durable-spend.js");
+  const atCeiling = new DurableDailySpend("p", "db", "telegraph_spend", async (url) =>
+    String(url).includes("metadata.google.internal")
+      ? new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 })
+      : new Response(JSON.stringify({ fields: { spent_usd: { doubleValue: 0.03 } } }), { status: 200 })
+  );
+  // The in-memory ledger is empty, exactly as it is after a cold start.
+  const client = new TelegraphClient(
+    { ...config, dailyUsd: 0.03 },
+    new MinerRegistry(config, async () => challengeResponse(), () => 0),
+    new SpendLedger({ perCallUsd: 0.01, perCaseEventUsd: 0.03, dailyUsd: 0.03 }),
+    async () => challengeResponse(),
+    atCeiling
+  );
+  const receipt = await client.enrich(request);
+  assert.equal(receipt.error_code, "SPEND_LIMIT_EXCEEDED");
+  assert.match(receipt.error, /Daily spend/);
+});

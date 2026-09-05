@@ -4,6 +4,7 @@ import { loadConfig } from "./config.js";
 import { MinerRegistry } from "./registry.js";
 import { SpendLedger } from "./spend.js";
 import { TelegraphClient, type EnrichRequest } from "./telegraph.js";
+import { DurableDailySpend } from "./durable-spend.js";
 
 const config = loadConfig();
 const registry = new MinerRegistry(config);
@@ -12,7 +13,8 @@ const ledger = new SpendLedger({
   perCaseEventUsd: config.perCaseEventUsd,
   dailyUsd: config.dailyUsd
 });
-const client = new TelegraphClient(config, registry, ledger);
+const durable = new DurableDailySpend(config.firestoreProject, config.firestoreDatabase);
+const client = new TelegraphClient(config, registry, ledger, fetch, durable);
 
 function send(response: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
@@ -75,6 +77,7 @@ const server = createServer((request, response) => {
     if (request.method === "GET" && url.pathname === "/health") {
       const registryHealth = await registry.health();
       const status = client.status();
+      const spentToday = await client.durableSpend();
       send(response, 200, {
         status: status.payer_configured && registryHealth.reachable ? "ok" : "degraded",
         runtime: "nemesis-telegraph-gateway",
@@ -82,7 +85,13 @@ const server = createServer((request, response) => {
         enabled: status.payer_configured,
         network: config.network,
         registry: registryHealth,
-        ...status
+        ...status,
+        durable_spend: {
+          configured: durable.configured,
+          database: config.firestoreDatabase || null,
+          spent_today_usd: spentToday,
+          daily_ceiling_usd: config.dailyUsd
+        }
       });
       return;
     }
