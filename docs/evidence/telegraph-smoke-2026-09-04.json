@@ -1,0 +1,74 @@
+{
+  "observed_at_utc": "2026-09-04T20:55:18Z",
+  "telegraph_engine": "http://13.237.89.59:7044/engine",
+  "tests": {
+    "registry": {
+      "endpoint": "/v1/intents",
+      "attempts": 5,
+      "http_200": 5,
+      "latency_seconds": [1.049014, 6.138023, 0.934912, 1.251834, 0.921859],
+      "canonical_intents": 45,
+      "intents_with_miners": 43
+    },
+    "x402_challenge": {
+      "endpoint": "/v1/ask",
+      "attempts": 5,
+      "http_402": 5,
+      "latency_seconds": [0.864453, 0.927841, 0.904080, 0.972510, 0.939514],
+      "x402_version": 2,
+      "resource_description": "Payment required for LLM-routed inference.",
+      "offers": [
+        {
+          "scheme": "exact",
+          "network": "eip155:84532",
+          "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "amount_atomic": "10000",
+          "amount_usdc": "0.01",
+          "pay_to": "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8",
+          "max_timeout_seconds": 60
+        },
+        {
+          "scheme": "exact",
+          "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+          "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPPJgZJDncDU",
+          "amount_atomic": "10000",
+          "amount_usdc": "0.01",
+          "pay_to": "G53EbeTZSNsAn7bj6iMFUQnq3zpDdEbHhKkPRywo8bix",
+          "max_timeout_seconds": 60
+        }
+      ],
+      "paid_replay_attempted": false,
+      "paid_replay_blocker": "No explicitly approved funded burner wallet was available."
+    },
+    "direct_miner_schema_checks": [
+      {
+        "miner_id": "10002",
+        "miner_slug": "degenlens-onchain",
+        "intent": "ONCHAIN_TX_LOOKUP",
+        "endpoint": "/transaction/lookup",
+        "http_status": 200,
+        "latency_seconds": 2.329660,
+        "result_summary": "Confirmed Ethereum transaction with block, timestamp, sender, recipient, fee, method selector, ERC-20 transfers, confidence, verdict, and evidence reference."
+      },
+      {
+        "miner_id": "10002",
+        "miner_slug": "degenlens-onchain",
+        "intent": "FRAUD_DETECTION",
+        "endpoint": "/anomaly/check",
+        "http_status": 200,
+        "latency_seconds": 2.871112,
+        "result_summary": "Elevated-risk observation with five screening measurements, confidence 0.85, coverage flag, and explicit non-guilt caveat."
+      },
+      {
+        "miner_id": "10002",
+        "miner_slug": "degenlens-onchain",
+        "intent": "WALLET_BALANCE_CHECK",
+        "endpoint": "/wallet/balance",
+        "http_status": 200,
+        "latency_seconds": 1.309174,
+        "result_summary": "Exact wei and decimal balance at a block, with source, confidence, and attribution metadata."
+      }
+    ]
+  },
+  "evidence_boundary": "The 402 response is real Telegraph network evidence but is not a settled paid call. Direct miner calls prove live miner schemas and availability but are not Telegraph-routed usage."
+}

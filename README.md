@@ -2,6 +2,8 @@
 
 **Autonomous crypto incident response for tracing stolen funds, preserving deterministic evidence, and continuing investigations when fund movement resumes.**
 
+> **Telegraph Track 3 fork:** This repository continues the frozen NEMESIS build from commit `d51a672ae631170609bd3c1f867cb8f5ef10375c` for the Telegraph Hackathon. The original NEMESIS repository and production deployment remain separate. The current checkpoint contains research and feasibility evidence only; full Telegraph integration has not begun.
+
 **Live app:** https://nemesis-web-h7bnd6kzfq-uc.a.run.app
 
 NEMESIS starts from an affected wallet or known theft transaction, identifies and verifies suspicious outflow, traces stolen assets across subsequent transactions, persists every branch of the investigation, and keeps dormant paths under monitoring so tracing can resume automatically when funds move again.
