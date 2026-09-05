@@ -20,11 +20,19 @@ function send(response: ServerResponse, status: number, body: unknown): void {
   response.end(payload);
 }
 
-/** Constant-time bearer check so the internal token cannot be probed by timing. */
+/**
+ * Application-level auth, checked in constant time so the token cannot be
+ * probed by timing.
+ *
+ * On Cloud Run this sits behind IAM, which consumes the Authorization header
+ * for its own OIDC token. The shared secret therefore travels in its own
+ * header, and Authorization is accepted only as a local-development fallback.
+ */
 function authorized(request: IncomingMessage): boolean {
   if (!config.internalToken) return false;
-  const header = request.headers.authorization ?? "";
-  const presented = Buffer.from(header.replace(/^Bearer\s+/i, ""));
+  const dedicated = request.headers["x-telegraph-token"];
+  const fromHeader = Array.isArray(dedicated) ? dedicated[0] : dedicated;
+  const presented = Buffer.from(fromHeader ?? (request.headers.authorization ?? "").replace(/^Bearer\s+/i, ""));
   const expected = Buffer.from(config.internalToken);
   return presented.length === expected.length && timingSafeEqual(presented, expected);
 }

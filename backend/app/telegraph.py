@@ -170,7 +170,12 @@ class TelegraphUnavailable(Exception):
 
 
 class TelegraphGatewayClient:
-    """Thin HTTP client for the gateway. It holds no key and signs nothing."""
+    """Thin HTTP client for the gateway. It holds no key and signs nothing.
+
+    Two independent layers guard the gateway. Cloud Run IAM consumes the
+    Authorization header for its own identity token, so the shared secret gets
+    a header of its own. Losing either one is not enough to reach the payer.
+    """
 
     def __init__(self, base_url: str, token: str, timeout: float = 60.0):
         self.base_url, self.token, self.timeout = base_url.rstrip("/"), token, timeout
@@ -178,6 +183,33 @@ class TelegraphGatewayClient:
     @property
     def enabled(self) -> bool:
         return bool(self.base_url and self.token)
+
+    def _identity_token(self) -> str | None:
+        """A Google OIDC token for the gateway, when running on Cloud Run.
+
+        Absent locally, where the gateway is not behind IAM. A failure here is
+        not fatal: the request still carries the shared secret, and the gateway
+        rejects it if that is not enough.
+        """
+        if not self.base_url.startswith("https://"):
+            return None
+        try:
+            from google.auth.transport.requests import Request as GoogleRequest
+            from google.oauth2 import id_token
+
+            return id_token.fetch_id_token(GoogleRequest(), self.base_url)
+        except Exception:
+            return None
+
+    def _headers(self) -> dict:
+        headers = {"x-telegraph-token": self.token}
+        identity = self._identity_token()
+        if identity:
+            headers["authorization"] = "Bearer " + identity
+        else:
+            # Local development, where nothing sits in front of the gateway.
+            headers["authorization"] = "Bearer " + self.token
+        return headers
 
     async def enrich(self, payload: dict) -> dict:
         if not self.enabled:
@@ -187,7 +219,7 @@ class TelegraphGatewayClient:
                 response = await client.post(
                     self.base_url + "/internal/telegraph/enrich",
                     json=payload,
-                    headers={"authorization": "Bearer " + self.token},
+                    headers=self._headers(),
                 )
         except httpx.HTTPError as exc:
             raise TelegraphUnavailable(str(exc)) from exc
@@ -200,10 +232,12 @@ class TelegraphGatewayClient:
             return {"enabled": False}
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(self.base_url + "/health")
+                response = await client.get(self.base_url + "/health", headers=self._headers())
             return {"enabled": True, **response.json()}
         except httpx.HTTPError as exc:
             return {"enabled": True, "status": "unreachable", "error": str(exc)}
+        except ValueError as exc:
+            return {"enabled": True, "status": "unreadable", "error": str(exc)}
 
 
 def build_query(intent: str, target_type: str, target: str, chain: str | None, context: dict) -> str:

@@ -1,0 +1,21 @@
+# Keep build uploads small. Dependencies are installed inside the images.
+.git/
+node_modules/
+**/node_modules/
+.next/
+dist/
+**/dist/
+.wrangler/
+.sites-runtime/
+out/
+coverage/
+__pycache__/
+**/__pycache__/
+*.pyc
+.env*
+!.env.example
+brand/
+docs/evidence/
+spikes/
+*.mp4
+*.pdf
