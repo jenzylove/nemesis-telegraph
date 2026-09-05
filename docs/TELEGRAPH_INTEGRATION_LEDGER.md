@@ -63,3 +63,19 @@
 | Public read-only receipts | Track 3 visible usage | Yes | Locally tested | The public telegraph endpoint serves receipts only for published cases; an unpublished case 404s exactly as a missing one does. |
 | Direct fallback paid proof | Prove the fallback path | Desired | Blocked | Implemented and unit tested, but never exercised against the live router. Needs a routed failure to occur or a deliberate paid test. |
 | Deployment and live E2E | Track 3 submission | Yes | Blocked | Needs Secret Manager entries, the nemesis-telegraph service account, and deployment. |
+
+## After the live end-to-end run (2026-09-05)
+
+| Integration / Capability | Status | Evidence |
+|---|---|---|
+| Autonomous loop, end to end, paid | Locally tested | Dormant recheck, RPC-verified movement, trace resume, published enrichment, one settled routed call, persisted receipt, timeline update. No human step in the loop. `docs/evidence/telegraph-e2e-2026-09-05.json`. |
+| Spend ceiling under real conditions | Locally tested | The per-case-event ceiling was set to one cent for the run. The second intent was refused before signing and persisted as a visible failed receipt. |
+| Trace independence from Telegraph | Locally tested | Branch state after the run was decided by RPC-verified tracing alone; neither the paid answer nor the refusal changed it. |
+| Router miner unpredictability | Production verified | Three settled calls returned three different miners: ChainSight (302), SarzOps (91001), INTERLOCK. None matched the rank observed at audit time. |
+| Deploy to Cloud Run | Blocked | Needs approval to deploy into project `nemesis-506114` alongside the submitted services, plus Secret Manager entries and a service account. |
+| Deployed live E2E | Blocked | Depends on deployment and on spend beyond the approved 0.03 test USDC. |
+| Direct fallback paid proof | Blocked | Implemented and unit tested; the live router has not failed in any of the three paid calls, so the path is still unexercised against production. |
+| Discord, submission form, X posts | Blocked | Needs account access. |
+| Demo video | Blocked | Follows deployment. |
+
+**Cumulative real spend: 0.03 test USDC across three settled calls, each verified on Base Sepolia.**
