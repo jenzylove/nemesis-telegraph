@@ -79,3 +79,23 @@
 | Demo video | Blocked | Follows deployment. |
 
 **Cumulative real spend: 0.03 test USDC across three settled calls, each verified on Base Sepolia.**
+
+## Deployed (2026-09-05)
+
+| Integration / Capability | Status | Evidence |
+|---|---|---|
+| Separate Cloud Run services | Production verified | nemesis-telegraph-web, nemesis-telegraph-api, nemesis-telegraph-gateway. The submitted services still answer on their own URLs, the API still reports git_sha d51a672, and its revision was not touched. |
+| Firestore isolation | Production verified | Telegraph runs on database `nemesis-telegraph`. The `(default)` database has no telegraph_receipts, no telegraph_spend, and no demo case. One shared client means the separation covers every collection. |
+| Pub/Sub isolation | Production verified | Topic nemesis-telegraph-case-events with its own push subscription to the Telegraph API. The original topic and subscription are untouched. |
+| Scheduler isolation | Production verified | nemesis-telegraph-monitor-tick, created then paused once the budget was spent. The original job stays ENABLED and unmodified. |
+| Secret isolation | Production verified | Seven nemesis-telegraph-* secrets, including the payer key and internal token. Provider values were copied rather than shared, so the originals' IAM policies were never altered. |
+| Gateway auth | Production verified | Cloud Run IAM plus a separate shared secret in its own header. The gateway is not publicly reachable. |
+| Deployed autonomous loop | Production verified | Scheduler tick, dormant recheck, real movement, RPC verification, trace resume and split, published enrichment, push delivery, paid call, persisted receipt, public UI. |
+| Deployed paid Telegraph calls | Production verified | Four settled calls, each verified on Base Sepolia. Three further miners appeared: OnChain Intel, DegenLens, SarzOps. |
+| Deployed UI | Production verified | The shipped page chunk carries the Telegraph panel and its evidence-boundary copy, pointed at the Telegraph API. The public case page answers 200 and its receipts are all marked non-authoritative with proof on all four settled calls. |
+| Durable spend ceiling | Production verified | The in-memory ceiling did not survive Cloud Run restarts and allowed a one cent overrun. The counter now lives in Firestore, is consulted before every payment, and refuses payment when it cannot be read. Live gateway reports 0.04 spent against a 0.03 ceiling, so further payment is refused. |
+| Firebase auth for the Telegraph frontend | Blocked | No Firebase web app config was available, so the deployed frontend has no sign-in. Public case pages work without it, which is enough for judging, but creating a case through the deployed UI does not. |
+| Direct fallback paid proof | Blocked | The router failed once in production (ROUTER_UNREACHABLE) but the registry was unreachable in the same window, so no fallback candidate could be chosen. Still unexercised. |
+| Discord, submission form, X posts, demo video | Blocked | Needs account access. |
+
+**Cumulative real spend: 0.07 test USDC across seven settled calls, every one verified on Base Sepolia.**

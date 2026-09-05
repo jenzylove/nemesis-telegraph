@@ -4,7 +4,9 @@
 
 > **Telegraph Track 3 fork:** This repository continues the frozen NEMESIS build from commit `d51a672ae631170609bd3c1f867cb8f5ef10375c` for the Telegraph Hackathon. The original `jenzylove/nemesis` repository and its production deployment are untouched, and every service here deploys under a separate `nemesis-telegraph-*` name.
 
-**Live app:** https://nemesis-web-h7bnd6kzfq-uc.a.run.app
+**Live app (original NEMESIS submission, unchanged):** https://nemesis-web-h7bnd6kzfq-uc.a.run.app
+
+**Live app (Telegraph Track 3):** https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app
 
 NEMESIS starts from an affected wallet or known theft transaction, identifies and verifies suspicious outflow, traces stolen assets across subsequent transactions, persists every branch of the investigation, and keeps dormant paths under monitoring so tracing can resume automatically when funds move again.
 
@@ -75,6 +77,35 @@ The failure is persisted as a visible receipt and the investigation continues.
 Verified integration evidence, including settled payments checked on chain,
 lives in `docs/evidence/`. The running state of every capability is tracked in
 `docs/TELEGRAPH_INTEGRATION_LEDGER.md`.
+
+### Deployment
+
+The Telegraph build runs as its own set of services. The submitted NEMESIS
+deployment keeps its own services, database, topic and schedule, and nothing
+here writes to any of them.
+
+| Component | Telegraph Track 3 | Original submission |
+|---|---|---|
+| Web | `nemesis-telegraph-web` | `nemesis-web` |
+| API | `nemesis-telegraph-api` | `nemesis-api-staging` |
+| Payment gateway | `nemesis-telegraph-gateway` | none |
+| Firestore database | `nemesis-telegraph` | `(default)` |
+| Pub/Sub topic | `nemesis-telegraph-case-events` | `nemesis-case-events` |
+| Scheduler job | `nemesis-telegraph-monitor-tick` | `nemesis-monitor-tick` |
+| Runtime identity | `nemesis-telegraph@` | `nemesis-runtime@` |
+| Secrets | `nemesis-telegraph-*` | `nemesis-staging-*` |
+
+Firestore isolation is what matters most, and it comes from a single setting.
+The whole application shares one Firestore client, so naming a separate
+database keeps every collection apart: cases, branches, timeline, graph,
+processed events and Telegraph receipts.
+
+The gateway is not publicly reachable. It requires Cloud Run IAM and a
+separate shared secret in its own header, holds the only copy of the payer
+key, runs at one instance so payments stay serialized, and keeps its daily
+spend counter in Firestore so a restart cannot reset the ceiling.
+
+Every service reports the commit it is running at `/health`.
 
 ## Architecture
 
