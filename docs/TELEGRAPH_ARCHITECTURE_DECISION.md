@@ -188,3 +188,49 @@ Timeline entries should contain receipt ID, intent, miner, routing mode, status,
 
 No full integration should begin until this milestone proves paid replay and settles the router/receipt unknowns.
 
+
+---
+
+## Milestone 1A outcome (2026-09-05): decision confirmed, contract frozen
+
+The paid spike succeeded and did not invalidate this decision. The TypeScript gateway path is confirmed: `@x402/fetch` and `@x402/evm` handled the v2 challenge, signing, and retry with no custom payment code, and the payer needed no ETH because settlement is relayed under EIP-3009.
+
+Three details from the settled call refine the design rather than change it.
+
+**Timeouts must be sized against settlement, not inference.** The miner spent about 1.0 s but the paid round trip took about 8.9 s. The gateway should allow roughly 45 s per paid attempt and must stay fully asynchronous, which is what this document already required.
+
+**The returned miner is not predictable from rank.** The router returned the observed rank two miner. Miner identity must be read from the response on every call and never inferred from a cached leaderboard position. Leaderboard data stays useful only for choosing a direct fallback candidate.
+
+**Signal hash is real but optional.** It was returned at the top level. The receipt contract keeps it nullable and the UI must render proof only when the field is actually present.
+
+### Frozen gateway response contract
+
+Field names below are the observed ones. Nothing here is synthesized when absent.
+
+```json
+{
+  "status": "succeeded",
+  "routing_mode": "routed",
+  "requested_intent": "ONCHAIN_TX_LOOKUP",
+  "returned_intent": "ONCHAIN_TX_LOOKUP",
+  "miner_id": "302",
+  "miner_name": "ChainSight — On-Chain Intelligence Hub",
+  "result": {},
+  "quoted_cost_usdc": "0.01",
+  "reported_cost_usd": 0.01,
+  "reported_duration_ms": 1046,
+  "duration_ms": 8872,
+  "signal_hash": "0x...",
+  "verification": null,
+  "payment": {
+    "network": "eip155:84532",
+    "payer": "0x...",
+    "settlement_transaction": "0x...",
+    "settled": true
+  },
+  "raw_response_hash": "sha256:...",
+  "created_at": "..."
+}
+```
+
+`miner_slug` is dropped from the contract because the routed response does not carry one; only `miner_id` and `miner_name` are observed. `verification` stays nullable because no paid call has returned it.

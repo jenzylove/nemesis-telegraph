@@ -195,3 +195,55 @@ Source: [official hackathon rules](https://hackathon.telegraphprotocol.com/rules
 5. HTTP inference does not contractually guarantee signal/verification fields.
 6. The target `nemesis-telegraph` source repository was not present in this workspace at audit start.
 
+
+---
+
+# Addendum: settled paid replay (2026-09-05)
+
+**Status change:** the audit's primary blocker is cleared. A real x402 v2 payment settled and a Telegraph routed response was returned. Spend so far: 0.01 of the approved 0.03 test USDC.
+
+## What was executed
+
+One routed `POST /engine/v1/ask` for `ONCHAIN_TX_LOOKUP` against transaction `0xb61413c495fdad6114a7aa863a00b2e3c28945979a10885b12b30316ea9f072c`. That transaction is the `theft_transaction_hash` of real NEMESIS case `NMS-260826-915B337C`, and it was independently reverified over Ethereum JSON-RPC before spending: status `0x1`, block 21895251, sender `0x0fa09c3a...6d2e`, recipient `0x1db92e2e...fcf4`.
+
+The live challenge was reprobed immediately before payment and was byte for byte the terms recorded on 2026-09-04: x402 v2, Base Sepolia, USDC `0x036CbD53...dCF7e`, 10,000 atomic, payee `0x5a2324aA...87ff8`, 60 second window. The client rejects any other network, asset, payee, scheme, or a larger amount before it will sign.
+
+Full evidence: `docs/evidence/telegraph-settled-smoke-2026-09-05.json`.
+
+## Observed results
+
+| Field | Observed value |
+|---|---|
+| HTTP status | 200 |
+| Selected miner | `302`, ChainSight On-Chain Intelligence Hub |
+| Returned intent | `ONCHAIN_TX_LOOKUP`, matching the requested intent |
+| Reported cost | 0.01 USD |
+| Miner reported duration | 1,046 ms |
+| End to end latency | 8,872 ms |
+| Signal hash | `0x273ba7a9af69491ef294b0e5c3c30c249016209238d02ee28f1b52dd31aa5bc0` |
+| Verification object | absent |
+| Router fallback field | absent |
+
+## Independent settlement verification
+
+The `PAYMENT-RESPONSE` header decoded to a success envelope naming payer, settlement transaction, and network. That settlement was then verified directly against Base Sepolia rather than trusted:
+
+- transaction `0x869b4b7c0b1fc47138b687de70472c2e90b26df23ef7b5c2b1dec541b8e2fc6e`, receipt status success, block 46413496;
+- settlement was submitted by a facilitator address through Multicall3, not by the payer, which is why a zero ETH payer balance is sufficient under EIP-3009;
+- the USDC log set contains exactly one transfer: 0.01 USDC from the payer to the expected Telegraph payee;
+- payer balance moved from 20 to 19.99 USDC.
+
+This closes the "trust the challenge, not the catalog" question with a settled example: quoted 0.01, reported 0.01, transferred 0.01.
+
+## Findings that change earlier conclusions
+
+1. **Signal hash is returned in practice.** The audit recorded signal hashes as not guaranteed by the HTTP inference schema and marked them blocked. A routed paid call did return `signal_hash` at the top level. Treat it as present but still not contractually guaranteed: persist it when returned and never synthesize it when absent.
+2. **The router did not select the observed rank one miner.** DegenLens was `ONCHAIN_TX_LOOKUP` leader at epoch 308; the router returned ChainSight, the observed number two. One sample cannot distinguish probabilistic routing from top two primary and fallback, and no fallback field was present to explain the choice. The routing discrepancy stays open, but this is direct evidence against assuming deterministic rank one selection. Capturing the returned miner on every call is therefore mandatory, not merely prudent.
+3. **Latency budget is dominated by payment, not inference.** The miner spent about 1.0 s while the full paid round trip took about 8.9 s, covering the unpaid challenge, signing, retry, and facilitator settlement. Gateway timeouts must be sized against the settled round trip. This reinforces keeping enrichment asynchronous and off the trace critical path.
+4. **The miner result agreed with NEMESIS RPC.** ChainSight returned sender, recipient, block, and status identical to independent RPC verification, and self reported `source: "rpc"`. No discrepancy surfaced on this sample, so the discrepancy detection path remains untested by live data and must be covered by unit tests.
+
+## Still open
+
+- Direct miner fallback via `/engine/v1/ask/{miner_id}` has not been paid tested.
+- Router behavior across repeated calls is unmeasured; one sample is not a distribution.
+- No `verification` object was returned, so signal hash linkage to Explorer proof is still unconfirmed.

@@ -1,0 +1,20 @@
+{
+  "name": "nemesis-telegraph-x402-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "quote": "tsx src/settled-smoke.ts --quote-only",
+    "pay": "tsx src/settled-smoke.ts"
+  },
+  "dependencies": {
+    "@x402/evm": "2.11.0",
+    "@x402/fetch": "2.11.0",
+    "viem": "2.37.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.3"
+  }
+}

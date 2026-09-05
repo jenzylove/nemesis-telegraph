@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "observed_at_utc": "2026-09-05T08:01:18.788Z",
+  "started_at_utc": "2026-09-05T08:01:09.917Z",
+  "endpoint": "http://13.237.89.59:7044/engine/v1/ask",
+  "request": {
+    "requested_intent": "ONCHAIN_TX_LOOKUP",
+    "subject": {
+      "chain": "ethereum",
+      "transaction_hash": "0xb61413c495fdad6114a7aa863a00b2e3c28945979a10885b12b30316ea9f072c"
+    },
+    "body": {
+      "query": "Look up Ethereum transaction 0xb61413c495fdad6114a7aa863a00b2e3c28945979a10885b12b30316ea9f072c. Report its on-chain status and effects.",
+      "context": {
+        "requested_intent": "ONCHAIN_TX_LOOKUP",
+        "intent": "ONCHAIN_TX_LOOKUP",
+        "chain": "ethereum",
+        "transaction_hash": "0xb61413c495fdad6114a7aa863a00b2e3c28945979a10885b12b30316ea9f072c",
+        "evidence_boundary": "NEMESIS JSON-RPC evidence remains authoritative; return external comparison only."
+      }
+    }
+  },
+  "challenge": {
+    "x402_version": 2,
+    "approved_offer": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "amount_atomic": "10000",
+      "amount_usdc": "0.01",
+      "pay_to": "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8",
+      "max_timeout_seconds": 60
+    }
+  },
+  "response": {
+    "http_status": 200,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "date": "Sat, 05 Sep 2026 08:01:18 GMT",
+      "payment-response": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4ODgyN2QzYWYyMGVmZTAyNTgyYWVhNjdhNWU3MDRjMDRiYWQ1MjMyNCIsInRyYW5zYWN0aW9uIjoiMHg4NjliNGI3YzBiMWZjNDcxMzhiNjg3ZGU3MDQ3MmMyZTkwYjI2ZGYyM2VmN2I1YzJiMWRlYzU0MWI4ZTJmYzZlIiwibmV0d29yayI6ImVpcDE1NTo4NDUzMiJ9"
+    },
+    "miner_id": "302",
+    "miner_name": "ChainSight — On-Chain Intelligence Hub",
+    "returned_intent": "ONCHAIN_TX_LOOKUP",
+    "result": {
+      "answer": "The recipient was 0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4, and the transaction carried 0 ETH in native value (the call invoked function selector 0x1163b2b0). It was sent from 0x0fa09c3a328792253f8dee7116848723b72a6d2e in block 21895251 with status ok.",
+      "block_number": 21895251,
+      "chain": "ethereum",
+      "contract_name": null,
+      "from": "0x0fa09c3a328792253f8dee7116848723b72a6d2e",
+      "hash": "0xb61413c495fdad6114a7aa863a00b2e3c28945979a10885b12b30316ea9f072c",
+      "is_contract_call": true,
+      "method": null,
+      "selector": "0x1163b2b0",
+      "self_transfer": false,
+      "signal": "The recipient was 0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4, and the transaction carried 0 ETH in native value (the call invoked function selector 0x1163b2b0). It was sent from 0x0fa09c3a328792253f8dee7116848723b72a6d2e in block 21895251 with status ok.",
+      "source": "rpc",
+      "status": "ok",
+      "to": "0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4",
+      "value_eth": 0,
+      "value_eth_exact": "0"
+    },
+    "reported_cost_usd": 0.01,
+    "reported_duration_ms": 1046,
+    "end_to_end_latency_ms": 8872,
+    "signal_hash": "0x273ba7a9af69491ef294b0e5c3c30c249016209238d02ee28f1b52dd31aa5bc0",
+    "verification": null,
+    "router_fallback": null
+  },
+  "payment": {
+    "payment_response_header_present": true,
+    "payment_response": {
+      "success": true,
+      "payer": "0x8827d3af20efe02582aea67a5e704c04bad52324",
+      "transaction": "0x869b4b7c0b1fc47138b687de70472c2e90b26df23ef7b5c2b1dec541b8e2fc6e",
+      "network": "eip155:84532"
+    },
+    "settlement_reference": "0x869b4b7c0b1fc47138b687de70472c2e90b26df23ef7b5c2b1dec541b8e2fc6e",
+    "independently_verified": {
+      "network": "eip155:84532",
+      "transaction_hash": "0x869b4b7c0b1fc47138b687de70472c2e90b26df23ef7b5c2b1dec541b8e2fc6e",
+      "receipt_status": "success",
+      "block_number": "46413496",
+      "transaction_to": "0xca11bde05977b3631167028862be2a173976ca11",
+      "transaction_from": "0xc6699d2aada6c36dfea5c248dd70f9cb0235cb63"
+    }
+  },
+  "evidence_boundary": "Real Telegraph-routed x402 call. NEMESIS JSON-RPC remains authoritative for blockchain facts."
+}
