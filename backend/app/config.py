@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     pubsub_topic: str = "nemesis-case-events"
     cloud_run_service_url: str = ""
     internal_service_account: str = ""
+    # Telegraph enrichment. Absent configuration disables it; tracing is unaffected.
+    telegraph_gateway_url: str = ""
+    telegraph_internal_token: str = ""
+    telegraph_receipts_collection: str = "telegraph_receipts"
+    telegraph_timeout_seconds: float = Field(default=60.0, gt=0, le=180)
+
     monitoring_max_blocks: int = Field(default=20, ge=1, le=100)
     trace_max_depth: int = Field(default=8, ge=1, le=64)
 

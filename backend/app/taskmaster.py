@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel,Field
 from .attribution import CuratedAttributionProvider,EntityAttribution
 from .models import ChainName,DeterministicEvidence,NormalizedTransaction
+from .telegraph import plan_intents,should_enrich
 BranchStatus=Literal["MOVING","DORMANT","OBSCURED","ACTIONABLE"]
 
 class TraceBranch(BaseModel):
@@ -82,8 +83,8 @@ class GooglePubSubPublisher(EventPublisher):
         return self.client.publish(self.client.topic_path(self.project,self.topic),json.dumps(e).encode()).result(timeout=20)
 
 class Taskmaster:
-    def __init__(self,repo,provider,publisher,max_blocks=20,max_depth=8,attribution_provider=None,max_candidates_per_hop=8,defer_deep_trace=False):
-        self.repo,self.provider,self.publisher,self.max_blocks,self.max_depth=repo,provider,publisher,max_blocks,max_depth;self.max_candidates_per_hop=max(1,max_candidates_per_hop);self.defer_deep_trace=defer_deep_trace;self.attribution_provider=attribution_provider or CuratedAttributionProvider();self.monitoring_gate=asyncio.Semaphore(2)
+    def __init__(self,repo,provider,publisher,max_blocks=20,max_depth=8,attribution_provider=None,max_candidates_per_hop=8,defer_deep_trace=False,enricher=None):
+        self.repo,self.provider,self.publisher,self.max_blocks,self.max_depth=repo,provider,publisher,max_blocks,max_depth;self.max_candidates_per_hop=max(1,max_candidates_per_hop);self.defer_deep_trace=defer_deep_trace;self.attribution_provider=attribution_provider or CuratedAttributionProvider();self.monitoring_gate=asyncio.Semaphore(2);self.enricher=enricher
     async def trace_initial(self,case_id,evidence:DeterministicEvidence):
         tx=evidence.transaction;wallet=evidence.submitted_wallet.lower();await self._timeline(case_id,"TRACING_FUNDS","Tracing funds",{"transaction_hash":tx.hash});branches=[];now=datetime.now(timezone.utc)
         for i,p in enumerate(self._paths(tx,wallet,None,None)):
@@ -95,8 +96,18 @@ class Taskmaster:
             for b in branches:
                 await self.publisher.publish({"id":stable_id("EV","drain",b.id,b.cursor_block),"type":"DRAIN_REQUESTED","branch_id":b.id})
             if branches:await self._timeline(case_id,"DEEP_TRACE_QUEUED","Following the funds beyond the first hop",{"branch_count":len(branches)})
+            await self._enrich_incident(case_id,evidence,branches)
             return [await self.repo.get_branch(b.id) for b in branches]
-        await self._drain(branches);return [await self.repo.get_branch(b.id) for b in branches]
+        await self._drain(branches);await self._enrich_incident(case_id,evidence,branches);return [await self.repo.get_branch(b.id) for b in branches]
+    async def _enrich_incident(self,case_id,evidence:DeterministicEvidence,branches):
+        """External context for the theft transaction once RPC has verified it."""
+        if self.enricher is None or not self.enricher.enabled:return 0
+        tx=evidence.transaction;expected={"status":tx.status,"hash":tx.hash,"from":tx.from_address,"to":tx.to_address,"block_number":tx.block_number}
+        targets=[("transaction",tx.hash)]
+        for b in branches:
+            ok,_=should_enrich(b.amount,b.depth)
+            if ok and ("address",b.current_address) not in targets:targets.append(("address",b.current_address))
+        return await self._request_intelligence(case_id,"VERIFIED_INCIDENT",tx.hash,targets,tx.chain,branch_id=branches[0].id if branches else None,expected=expected)
     async def schedule(self):
         bs=await self.repo.list_branches(status="DORMANT")
         for b in bs:await self.publisher.publish({"id":stable_id("EV","recheck",b.id,b.cursor_block),"type":"RECHECK_REQUESTED","branch_id":b.id})
@@ -108,6 +119,7 @@ class Taskmaster:
                 if e["type"]=="RECHECK_REQUESTED":result=await self.recheck(e["branch_id"])
                 elif e["type"]=="DRAIN_REQUESTED":result=await self.drain_branch(e["branch_id"])
                 elif e["type"]=="TRACE_REQUESTED":result=await self.resume(e["branch_id"],e["transaction_hash"])
+                elif e["type"]=="TELEGRAPH_ENRICH_REQUESTED":result=await self.telegraph_enrich(e)
                 else:raise ValueError("unsupported event type")
         except Exception as exc:
             await self.repo.release_event(e["id"])
@@ -143,7 +155,26 @@ class Taskmaster:
     async def resume(self,bid,tx_hash):
         b=await self.repo.get_branch(bid)
         if not b or b.status!="MOVING":return {"ignored":True}
-        await self._timeline(b.case_id,"TRACING_RESUMED","Tracing resumed",{"branch_id":b.id,"transaction_hash":tx_hash});r=await self._process(b,tx_hash);await self._drain(r["branches"]);return {"resumed":True,"extended":r["extended"],"branches":r["path_count"],"terminal":not r["extended"]}
+        await self._timeline(b.case_id,"TRACING_RESUMED","Tracing resumed",{"branch_id":b.id,"transaction_hash":tx_hash});r=await self._process(b,tx_hash);await self._drain(r["branches"])
+        # The movement is now RPC-verified and its destinations are normalized,
+        # which is the earliest point at which paying for outside context can be
+        # justified. Enrichment is published, never awaited: a Telegraph outage
+        # must not change branch state or hold up the trace.
+        await self._enrich_movement(b,tx_hash,r["branches"])
+        return {"resumed":True,"extended":r["extended"],"branches":r["path_count"],"terminal":not r["extended"]}
+    async def _enrich_movement(self,b,tx_hash,branches):
+        if self.enricher is None or not self.enricher.enabled:return 0
+        ok,_=should_enrich(b.amount,b.depth)
+        if not ok:return 0
+        try:
+            tx=await self.provider.get_normalized_transaction(b.chain,tx_hash);expected={"status":tx.status,"hash":tx.hash,"from":tx.from_address,"to":tx.to_address,"block_number":tx.block_number}
+        except Exception:
+            # Without verified facts there is nothing to compare an answer to,
+            # so there is nothing worth buying.
+            return 0
+        targets=[("transaction",tx_hash)]+[("address",t.current_address) for t in branches if t and t.current_address]
+        seen=[];[seen.append(x) for x in targets if x not in seen]
+        return await self._request_intelligence(b.case_id,"MOVEMENT_DETECTED",tx_hash,seen,b.chain,branch_id=b.id,expected=expected)
     async def case_trace(self,c):
         g=await self.repo.get_graph(c);return {"branches":[b.model_dump(mode="json") for b in await self.repo.list_branches(case_id=c)],"graph":{"nodes":[n.model_dump(mode="json") for n in g["nodes"]],"edges":[e.model_dump(mode="json") for e in g["edges"]]},"timeline":[e.model_dump(mode="json") for e in await self.repo.get_timeline(c)]}
     async def _drain(self,branches):
@@ -322,6 +353,29 @@ class Taskmaster:
         b.status="DORMANT";b.terminal_reason=reason;b.last_checked=datetime.now(timezone.utc);await self.repo.save_branch(b);await self._timeline(b.case_id,"BRANCH_DORMANT","Dormant wallet detected",{"branch_id":b.id,"address":b.current_address,"reason":reason});await self._timeline(b.case_id,"MONITORING_ACTIVE","Monitoring active",{"branch_id":b.id})
     async def _transfer_graph(self,b,source,dest,tx,ref,kind):
         now=datetime.now(timezone.utc);src=stable_id("NODE",b.case_id,b.chain,source);dst=stable_id("NODE",b.case_id,b.chain,dest);txn=stable_id("NODE",b.case_id,"tx",b.chain,tx.hash);await self.repo.save_node(GraphNode(id=src,case_id=b.case_id,branch_id=b.id,kind="address",label="Wallet",chain=b.chain,address=source,created_at=now,provenance=["json_rpc",tx.hash]));await self.repo.save_node(GraphNode(id=dst,case_id=b.case_id,branch_id=b.id,kind="address",label="Wallet",chain=b.chain,address=dest,created_at=now,provenance=["json_rpc",tx.hash]));await self.repo.save_node(GraphNode(id=txn,case_id=b.case_id,branch_id=b.id,kind="transaction",label="Transaction",chain=b.chain,transaction_hash=tx.hash,created_at=now,provenance=["json_rpc",tx.hash]));await self.repo.save_edge(GraphEdge(id=stable_id("EDGE",b.id,tx.hash,source,dest,b.asset),case_id=b.case_id,branch_id=b.id,source=src,target=dst,asset=b.asset,amount=b.amount,transaction_hash=tx.hash,chain=b.chain,created_at=now,provenance=["json_rpc",ref,tx.hash],kind=kind,data={"transaction_node_id":txn}))
+    async def telegraph_enrich(self,e):
+        """Buys one piece of external intelligence for an already verified fact."""
+        if self.enricher is None or not self.enricher.enabled:return {"skipped":"telegraph_disabled"}
+        r=await self.enricher.enrich(e["case_id"],e["intent"],e["target_type"],e["target_value"],e.get("chain"),e.get("trigger","MOVEMENT_DETECTED"),branch_id=e.get("branch_id"),event_id=e.get("source_event_id"),rpc_evidence_reference=e.get("rpc_evidence_reference"),expected=e.get("expected"),context=e.get("context"))
+        return {"receipt_id":r.id,"status":r.status} if r else {"skipped":"not_eligible"}
+    async def _request_intelligence(self,case_id,trigger,source_event_id,targets,chain,branch_id=None,expected=None,context=None,has_public_subject=False):
+        """Publishes enrichment for verified targets. Never on the trace path.
+
+        Telegraph costs real money and takes about nine seconds to settle, so
+        the trace must never wait on it and a routine recheck must never reach
+        it. Only a verified change of fact gets here.
+        """
+        if self.enricher is None or not self.enricher.enabled or not self.publisher:return 0
+        published=0
+        for target_type,target_value in targets:
+            if not target_value:continue
+            for intent in plan_intents(trigger,target_type,has_public_subject):
+                # One event per intent so a failure of one is independently
+                # visible and retryable without re-paying for the others.
+                await self.publisher.publish({"id":stable_id("EV","tg",case_id,branch_id or "-",intent,target_type,str(target_value).lower()),"type":"TELEGRAPH_ENRICH_REQUESTED","case_id":case_id,"branch_id":branch_id,"trigger":trigger,"source_event_id":source_event_id,"intent":intent,"target_type":target_type,"target_value":target_value,"chain":chain,"expected":expected if target_type=="transaction" else None,"context":context or {},"rpc_evidence_reference":"json_rpc:"+str(source_event_id or target_value)})
+                published+=1
+        if published:await self._timeline(case_id,"TELEGRAPH_ENRICHMENT_REQUESTED","External intelligence requested for verified evidence",{"branch_id":branch_id,"trigger":trigger,"request_count":published,"evidence_plane":"telegraph_external_intelligence"})
+        return published
     async def _timeline(self,c,t,m,data):
         e=TimelineEvent(id=stable_id("EVT",c,t,json.dumps(data,sort_keys=True,default=str)),case_id=c,type=t,message=m,created_at=datetime.now(timezone.utc),data=data);return await self.repo.append_timeline(e)
 

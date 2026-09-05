@@ -36,6 +36,12 @@ from .progress import (
 from .providers import JsonRpcProvider, RpcProviderError
 from .report import render as render_report
 from .repository import repository_from_settings
+from .telegraph import (
+    FirestoreTelegraphReceiptRepository,
+    InMemoryTelegraphReceiptRepository,
+    TelegraphEnricher,
+    TelegraphGatewayClient,
+)
 from .taskmaster import (
     FirestoreMonitoringRepository,
     GooglePubSubPublisher,
@@ -104,6 +110,7 @@ discovery = (
 progress_reporter: ProgressReporter = InMemoryProgressReporter()
 workflow = CaseWorkflow(repository, provider, classifier, discovery=discovery, progress=progress_reporter)
 taskmaster = None
+telegraph = None
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -171,7 +178,7 @@ class DormantRequest(BaseModel):
 
 @asynccontextmanager
 async def lifespan(_):
-    global taskmaster
+    global taskmaster, telegraph
     await repository.initialize()
     if hasattr(repository, "client") and repository.client is not None:
         workflow.progress = FirestoreProgressReporter(repository.client)
@@ -180,6 +187,19 @@ async def lifespan(_):
     else:
         monitor_repo = InMemoryMonitoringRepository()
         publisher = GooglePubSubPublisher(settings.google_cloud_project, settings.pubsub_topic)
+    receipts = (
+        FirestoreTelegraphReceiptRepository(repository.client, settings.telegraph_receipts_collection)
+        if getattr(repository, "client", None) is not None
+        else InMemoryTelegraphReceiptRepository()
+    )
+    telegraph = TelegraphEnricher(
+        receipts,
+        TelegraphGatewayClient(
+            settings.telegraph_gateway_url,
+            settings.telegraph_internal_token,
+            settings.telegraph_timeout_seconds,
+        ),
+    )
     taskmaster = Taskmaster(
         monitor_repo,
         provider,
@@ -190,7 +210,11 @@ async def lifespan(_):
         # event path so the case is delivered as soon as its evidence stands
         # and never depends on the browser holding the request open.
         defer_deep_trace=True,
+        enricher=telegraph,
     )
+    # Receipts reference the timeline the trace already writes, so intelligence
+    # lands in the same case narrative as the deterministic evidence.
+    telegraph.timeline = taskmaster._timeline
     workflow.taskmaster = taskmaster
     yield
     close = getattr(repository, "close", None)
@@ -235,7 +259,15 @@ async def health():
             "goplus": True,
             "chainabuse": bool(settings.chainabuse_api_key),
         },
+        "telegraph": await telegraph_health(),
     }
+
+
+async def telegraph_health() -> dict:
+    """Operational view of the enrichment plane. Never exposes a secret."""
+    if telegraph is None or not telegraph.enabled:
+        return {"enabled": False, "reason": "not configured"}
+    return await telegraph.gateway.health()
 
 
 @app.post("/v1/cases", response_model=CaseResponse, status_code=201)
@@ -366,6 +398,62 @@ async def get_public_trace(case_id: str):
     trace["outcome"] = build_outcome(trace["asset_totals"], trace)
     trace["case_state"] = derive_case_state(trace["branches"], case.state)
     return trace
+
+
+# Telegraph intelligence is served as its own evidence plane. It is deliberately
+# a separate payload from the trace so the frontend cannot accidentally render
+# an external opinion as a deterministic fact.
+def telegraph_view(receipt) -> dict:
+    payload = receipt.model_dump(mode="json")
+    payload["evidence_plane"] = "telegraph_external_intelligence"
+    payload["authoritative_for_chain_facts"] = False
+    # Proof is shown only where Telegraph actually returned it.
+    payload["has_proof"] = bool(receipt.signal_hash or (receipt.payment or {}).get("settlement_transaction"))
+    return payload
+
+
+async def telegraph_receipts(case_id: str) -> dict:
+    if telegraph is None:
+        return {"enabled": False, "receipts": [], "summary": {}}
+    found = await telegraph.receipts.list_by_case(case_id)
+    settled = [r for r in found if r.status == "SUCCEEDED"]
+    return {
+        "enabled": telegraph.enabled,
+        "receipts": [telegraph_view(r) for r in found],
+        "summary": {
+            "total": len(found),
+            "succeeded": len(settled),
+            "failed": len([r for r in found if r.status == "FAILED"]),
+            "intents": sorted({r.intent for r in found}),
+            "miners": sorted({r.miner_name for r in settled if r.miner_name}),
+            "spend_usd": round(sum(r.reported_cost_usd or 0 for r in settled), 6),
+            "discrepancies": len([r for r in settled if r.discrepancy]),
+        },
+    }
+
+
+@app.get("/v1/cases/{case_id}/telegraph")
+async def get_case_telegraph(case_id: str, user: dict = Depends(require_user)):
+    await owned_case(case_id, user)
+    return await telegraph_receipts(case_id)
+
+
+@app.get("/v1/public/cases/{case_id}/telegraph")
+async def get_public_case_telegraph(case_id: str):
+    await published_case(case_id)
+    return await telegraph_receipts(case_id)
+
+
+@app.get("/v1/cases/{case_id}/telegraph/{receipt_id}")
+async def get_case_telegraph_receipt(case_id: str, receipt_id: str, user: dict = Depends(require_user)):
+    await owned_case(case_id, user)
+    if telegraph is None:
+        raise HTTPException(503, "telegraph runtime unavailable")
+    receipt = await telegraph.receipts.get(receipt_id)
+    # A receipt from another case is not this case's evidence.
+    if receipt is None or receipt.case_id != case_id:
+        raise HTTPException(404, "receipt not found")
+    return telegraph_view(receipt)
 
 
 @app.get("/v1/cases/{case_id}/evidence-package")
