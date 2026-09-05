@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "observed_at_utc": "2026-09-05T08:41:09.186Z",
+  "what_this_proves": "The Telegraph gateway service, not the standalone spike, executed a real routed x402 call end to end: quote, allowlist check, spend authorization, payment, settlement, and normalization into the frozen receipt contract.",
+  "endpoint": "POST /internal/telegraph/enrich -> Telegraph POST /engine/v1/ask",
+  "request": {
+    "case_id": "NMS-260826-915B337C",
+    "trigger": "GATEWAY_SMOKE",
+    "requested_intent": "FRAUD_DETECTION",
+    "target": {
+      "chain": "ethereum",
+      "address": "0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4"
+    },
+    "target_provenance": "RPC-verified recipient of the case theft transaction 0xb61413c4...f072c"
+  },
+  "receipt": {
+    "status": "succeeded",
+    "routing_mode": "routed",
+    "fallback_reason": null,
+    "requested_intent": "FRAUD_DETECTION",
+    "returned_intent": "FRAUD_DETECTION",
+    "intent_matched": true,
+    "miner_id": "91001",
+    "miner_name": "SarzOps Fraud Intelligence",
+    "result": {
+      "confidence": 0.6,
+      "explanation": "I do not have any observable fraud\u2011risk signals for Ethereum address\u202f0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4 in my current data sources.",
+      "mode": "knowledge",
+      "signal": "I do not have any observable fraud\u2011risk signals for Ethereum address\u202f0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4 in my current data sources.",
+      "source": "groq:openai/gpt-oss-120b",
+      "verdict": "RECHECK"
+    },
+    "quoted_cost_usdc": "0.010000",
+    "reported_cost_usd": 0.01,
+    "reported_duration_ms": 1946,
+    "duration_ms": 8743,
+    "signal_hash": "0x037358dc1a52777e2f780b8947e7cb3bddb6e50e1273ef661bb06e1fecc9d9a5",
+    "verification": null,
+    "payment": {
+      "network": "eip155:84532",
+      "payer": "0x8827d3af20efe02582aea67a5e704c04bad52324",
+      "settlement_transaction": "0xc63efd9703b57211c70edf8089172ca2f5adea0aab8ee64b33b42c1ac4931275",
+      "settled": true
+    },
+    "raw_response_hash": "sha256:23ab15d3fffe6d6ee40010d0ca1d2ce932123b75b0f9ac17ce7c0fe813059bc6",
+    "registry_observed_at": null,
+    "error_code": null,
+    "error": null,
+    "created_at": "2026-09-05T08:41:09.186Z"
+  },
+  "independent_settlement_verification": {
+    "network": "eip155:84532",
+    "transaction_hash": "0xc63efd9703b57211c70edf8089172ca2f5adea0aab8ee64b33b42c1ac4931275",
+    "receipt_status": "success",
+    "block_number": "46414691",
+    "usdc_transfers": [
+      {
+        "from": "0x8827d3AF20eFe02582aEA67a5E704C04BAd52324",
+        "to": "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8",
+        "usdc": "0.01"
+      }
+    ],
+    "matches_approved_terms": true,
+    "payer_balance_after": "19.98"
+  },
+  "cumulative_test_spend_usdc": "0.02",
+  "product_finding": "The router selected SarzOps Fraud Intelligence (91001), which answered from an LLM knowledge mode with source groq:openai/gpt-oss-120b and no wallet telemetry. It explicitly reported no observable signals with verdict RECHECK and confidence 0.6. This is the audit's warning made concrete: FRAUD_DETECTION rank does not imply wallet fit. NEMESIS must render this as no external signal available, never as an address being clean.",
+  "evidence_boundary": "Real Telegraph-routed and settled call. NEMESIS JSON-RPC remains authoritative for every blockchain fact."
+}
