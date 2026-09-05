@@ -56,3 +56,41 @@
    call to action, which then could not be clicked. The nav reserves room for
    it rather than letting the two overlap. */
 
+
+/* Telegraph is a separate evidence plane and is styled to look like one: an
+   amber-keyed external voice, never the acid green used for verified facts. */
+.telegraphPanel{grid-column:1/-1}
+.tgBoundary{color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 16px;border-left:2px solid var(--amber);padding-left:12px}
+.tgSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.tgSummary div{border:1px solid var(--line);padding:12px 13px;background:rgba(255,255,255,.012)}
+.tgSummary small{display:block;font:9px monospace;letter-spacing:.16em;color:var(--muted)}
+.tgSummary strong{display:block;font-size:22px;margin:6px 0 3px;color:var(--amber)}
+.tgSummary span{font-size:11px;color:var(--muted)}
+.tgList{display:flex;flex-direction:column;gap:14px}
+.tgReceipt{border:1px solid var(--line);border-left:2px solid var(--amber);padding:15px 16px;background:rgba(255,255,255,.012)}
+.tgReceipt.failed{border-left-color:#4a5250;opacity:.85}
+.tgReceipt.risk{border-left-color:var(--red)}
+.tgReceipt header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px}
+.tgReceipt header b{display:block;font-size:14px;letter-spacing:.02em}
+.tgReceipt header small{display:block;color:var(--muted);font:10px monospace;letter-spacing:.08em;margin-top:4px}
+.tgVerdict{font:10px monospace;letter-spacing:.12em;padding:5px 9px;border:1px solid var(--line);white-space:nowrap;text-transform:uppercase}
+.tgVerdict.risk{color:var(--red);border-color:var(--red)}
+.tgVerdict.low,.tgVerdict.info{color:var(--amber);border-color:var(--amber)}
+.tgVerdict.unknown,.tgVerdict.failed{color:var(--muted)}
+.tgMeta{display:flex;flex-wrap:wrap;gap:8px 18px;font:10px monospace;letter-spacing:.1em;color:var(--muted)}
+.tgMeta b{color:var(--text);font-weight:600}
+.tgNote{margin:11px 0 0;font-size:12px;color:var(--muted);line-height:1.55}
+.tgNote.failed{color:#c48c8a}
+.tgClash{margin-top:12px;border:1px solid var(--red);padding:11px 12px;display:flex;flex-direction:column;gap:5px}
+.tgClash b{color:var(--red);font-size:12px;letter-spacing:.04em}
+.tgClash span{font-size:12px;color:var(--text)}
+.tgClash i{font-style:normal;color:var(--amber)}
+.tgClash small{color:var(--muted);font-size:11px;margin-top:3px}
+.tgReceipt footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:13px;padding-top:12px;border-top:1px solid var(--line)}
+.tgProof{display:flex;flex-wrap:wrap;gap:6px 16px;font:10px monospace;letter-spacing:.09em;color:var(--acid)}
+.tgProof a{color:var(--acid);text-decoration:none;border-bottom:1px solid rgba(201,255,61,.35)}
+.tgProof span{color:var(--muted)}
+.tgProof.none{color:var(--muted)}
+.tgToggle{background:none;border:1px solid var(--line);color:var(--text);font:10px monospace;letter-spacing:.12em;padding:7px 11px;cursor:pointer;text-transform:uppercase}
+.tgToggle:hover{border-color:var(--amber);color:var(--amber)}
+.tgRaw{margin:12px 0 0;padding:12px;background:#070909;border:1px solid var(--line);overflow-x:auto;font:11px monospace;color:#9fb0a8;max-height:340px}

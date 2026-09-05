@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import {onOpenSavedCase,onStartInvestigation} from "./case-bridge";
 import {validateEvmAddress,validateTransactionHash} from "./evm-validation.mjs";
+import TelegraphPanel,{type TelegraphState} from "./telegraph-panel";
 
 type Transfer={log_index:number;token_contract:string;from_address:string;to_address:string;raw_amount:string};
 type NFTTransfer={log_index:number;token_contract:string;from_address:string;to_address:string;token_id:string};
@@ -12,7 +13,7 @@ type AssetTotal={asset:string;stolen:number;located:number;unresolved:number;uni
 type Outcome={summary:string;asset_totals:AssetTotal[];branch_counts:Record<string,number>;identified_services:{branch_id:string;entity_name:string;entity_type:string;address:string;chain:string;confidence:number;source:string;evidence_type:string;actionable:boolean}[];next_actions:string[];limitations:string[]};
 type TraceState={branches:{id:string;parent_branch_id:string|null;depth:number;current_address:string;chain:string;asset:string;amount:string;status:string;last_transaction:string;terminal_reason:string|null;attribution:Outcome["identified_services"][number]|null}[];graph:{nodes:{id:string;kind:string;label:string;chain:string;address:string|null;transaction_hash:string|null;branch_id:string|null}[];edges:{id:string;source:string;target:string;asset:string;amount:string;kind:string;branch_id:string;transaction_hash:string}[]};timeline:{id:string;type:string;message:string;created_at:string;data:Record<string,unknown>}[];asset_totals:AssetTotal[];outcome:Outcome;case_state:string};
 type DemoStep={title:string;detail:string;time:string;tone?:string};
-type CaseSection="overview"|"graph"|"evidence"|"timeline";
+type CaseSection="overview"|"graph"|"evidence"|"intelligence"|"timeline";
 
 const demoSteps:DemoStep[]=[
 {title:"Case opened",detail:"Evidence preserved and investigation queued",time:"12:41:02"},
@@ -143,6 +144,7 @@ function Shell({children,onExit,onHome,monitor=false}:{children:(section:CaseSec
   <button className={section==="overview"?"selected":""} onClick={()=>setSection("overview")}>◈ Overview</button>
   <button className={section==="graph"?"selected":""} onClick={()=>setSection("graph")}>⌁ Fund graph</button>
   <button className={section==="evidence"?"selected":""} onClick={()=>setSection("evidence")}>◎ Evidence</button>
+  <button className={section==="intelligence"?"selected":""} onClick={()=>setSection("intelligence")}>◇ Telegraph</button>
   <button className={section==="timeline"?"selected":""} onClick={()=>setSection("timeline")}>▤ Timeline</button>
  </div>{monitor&&<div className="monitorBox"><i/><div><b>MONITOR ACTIVE</b><small>1 dormant branch</small></div></div>}<button className="newCase" onClick={onExit}>＋ New investigation</button></aside>{children(section)}</main>
 }
@@ -257,6 +259,10 @@ function RealGraph({data,trace}:{data:RealResponse;trace:TraceState|null}){
 function RealCaseScreen({data,onExit,onHome,isPublic=false}:{data:RealResponse;onExit:()=>void;onHome:()=>void;isPublic?:boolean}){
  const c=data.case,tx=c.evidence!.transaction,f=c.finding||{classification:"agent unavailable",summary:c.error||"Deterministic evidence was stored, but Gemini classification is not available.",confidence:0,compromise_mechanism_confidence:null,evidence_references:[],limitations:["Gemini classification requires configured Google credentials."]};
  const[trace,setTrace]=useState<TraceState|null>(null);useEffect(()=>{let active=true,busy=false;const api=process.env.NEXT_PUBLIC_NEMESIS_API_URL?.replace(/\/$/,"");async function refresh(){if(!api||busy)return;busy=true;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);try{const r=await fetch(`${api}${isPublic?"/v1/public":"/v1"}/cases/${c.id}/trace`,{signal:controller.signal});if(r.ok&&active)setTrace(await r.json())}catch{}finally{clearTimeout(timeout);busy=false}}refresh();const id=setInterval(refresh,5000);return()=>{active=false;clearInterval(id)}},[c.id,isPublic]);
+ // Enrichment settles seconds after the movement that triggered it, so the
+ // panel polls rather than waiting for a reload.
+ const[telegraph,setTelegraph]=useState<TelegraphState|null>(null);const[tgLoading,setTgLoading]=useState(true);
+ useEffect(()=>{let active=true,busy=false;const api=process.env.NEXT_PUBLIC_NEMESIS_API_URL?.replace(/\/$/,"");async function refresh(){if(!api||busy)return;busy=true;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);try{const r=await fetch(`${api}${isPublic?"/v1/public":"/v1"}/cases/${c.id}/telegraph`,{signal:controller.signal});if(r.ok&&active)setTelegraph(await r.json())}catch{}finally{clearTimeout(timeout);busy=false;if(active)setTgLoading(false)}}refresh();const id=setInterval(refresh,7000);return()=>{active=false;clearInterval(id)}},[c.id,isPublic]);
  const save=(name:string,body:string,type:string)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([body],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)};
  // The package is for an investigator or a fraud desk; the report is the same
  // evidence in a form the victim can read without parsing it.
@@ -270,6 +276,7 @@ function RealCaseScreen({data,onExit,onHome,isPublic=false}:{data:RealResponse;o
   {(section==="overview"||section==="evidence")&&<section className="panel diagnosis"><div className="panelHead"><span>COMPROMISE MECHANISM</span><small>{Math.round((f.compromise_mechanism_confidence??f.confidence)*100)}% CONFIDENCE</small></div><h3>{f.classification.replaceAll("_"," ")}</h3><p>{f.summary}</p><div className="evidenceRows"><span>Submitted wallet <b>{short(c.wallet_address)}</b></span><span>Transaction <b>{short(tx.hash)}</b></span><span>From <b>{short(tx.from_address)}</b></span><span>To <b>{short(tx.to_address)}</b></span>{c.discovery&&<span>Incident discovery <b>{c.discovery.source.toUpperCase()} · {c.discovery.candidate_count} candidates</b></span>}</div>{f.limitations.length>0&&<small className="caution">{f.limitations.join(" · ")}</small>}</section>}
   {section==="overview"&&<section className="panel destination"><div className="panelHead"><span>TRACE BRANCHES</span><small>{trace?.branches.length||0} FOUND</small></div>{trace?.branches.length?<div className="transferList">{trace.branches.map(b=><div key={b.id}><span>{b.status}</span><b>{short(b.current_address)}</b><small>{short(b.asset)} · raw amount {b.amount}</small></div>)}</div>:<div className="emptyTrace">No qualifying outgoing fund path was present.</div>}</section>}
   {section==="overview"&&trace?.outcome&&<section className="panel destination"><div className="panelHead"><span>CURRENT OUTCOME</span><small>DETERMINISTIC STATE</small></div><h3>{trace.outcome.summary}</h3><div className="transferList">{trace.outcome.asset_totals.map(total=><div key={total.asset}><span>{short(total.asset)} · RAW UNITS</span><b>Stolen {total.stolen} · Located {total.located} · Unresolved {total.unresolved}</b></div>)}</div><div className="evidenceRows">{Object.entries(trace.outcome.branch_counts).filter(([,count])=>count>0).map(([status,count])=><span key={status}>{status.toUpperCase()} <b>{count}</b></span>)}</div><h3>What you can do now</h3><p>{trace.outcome.next_actions.join(" · ")}</p><small className="caution">{trace.outcome.limitations.join(" · ")}</small></section>}
+  {(section==="overview"||section==="intelligence")&&<TelegraphPanel state={telegraph} loading={tgLoading}/>}
   {(section==="overview"||section==="evidence")&&<section className="panel escalation"><div className="panelHead"><span>DETERMINISTIC EVIDENCE</span><small>STORED</small></div><div className="packageIcon">▤</div><div><h3>Normalized transaction package</h3><p>A readable incident report for you, and the full structured package for an investigator or exchange. Verified facts, assessment and unknowns stay separated in both.</p></div>{isPublic?<p className="publicNote">This is a published case, shown read-only. The evidence package stays with the account that opened the investigation.</p>:<div className="evidenceActions"><button onClick={()=>exportEvidence("report")}>Download incident report</button><button className="secondary" onClick={()=>exportEvidence("package")}>Evidence package (JSON)</button></div>}</section>}
  </div></section>}</Shell>
 }

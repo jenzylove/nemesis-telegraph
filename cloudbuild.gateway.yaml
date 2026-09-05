@@ -1,0 +1,57 @@
+# Telegraph payment gateway. Deployed as its own service so the payer key,
+# the x402 dependencies, and payment retries stay out of the case runtime.
+# It is deliberately NOT public: only the NEMESIS API may call it.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build","-t","us-central1-docker.pkg.dev/$PROJECT_ID/nemesis/telegraph-gateway:$BUILD_ID","gateway"]
+  - name: gcr.io/cloud-builders/docker
+    args: ["push","us-central1-docker.pkg.dev/$PROJECT_ID/nemesis/telegraph-gateway:$BUILD_ID"]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - nemesis-telegraph-gateway
+      - --image
+      - us-central1-docker.pkg.dev/$PROJECT_ID/nemesis/telegraph-gateway:$BUILD_ID
+      - --region
+      - ${_REGION}
+      - --platform
+      - managed
+      # No unauthenticated access. This service spends money.
+      - --no-allow-unauthenticated
+      - --service-account
+      - nemesis-telegraph@$PROJECT_ID.iam.gserviceaccount.com
+      - --set-env-vars
+      - GIT_SHA=$COMMIT_SHA,TELEGRAPH_ENGINE_URL=${_TELEGRAPH_ENGINE_URL},TELEGRAPH_NETWORK=${_TELEGRAPH_NETWORK},TELEGRAPH_ASSET=${_TELEGRAPH_ASSET},TELEGRAPH_PAYEE=${_TELEGRAPH_PAYEE},TELEGRAPH_MAX_AMOUNT_ATOMIC=${_TELEGRAPH_MAX_AMOUNT_ATOMIC},TELEGRAPH_PER_CALL_USD=${_PER_CALL_USD},TELEGRAPH_PER_CASE_EVENT_USD=${_PER_CASE_EVENT_USD},TELEGRAPH_DAILY_USD=${_DAILY_USD},TELEGRAPH_REQUEST_TIMEOUT_MS=45000,TELEGRAPH_REGISTRY_TTL_MS=300000,BASE_SEPOLIA_RPC_URL=${_BASE_SEPOLIA_RPC_URL}
+      - --set-secrets
+      - TELEGRAPH_EVM_PRIVATE_KEY=nemesis-telegraph-payer-key:latest,TELEGRAPH_INTERNAL_TOKEN=nemesis-telegraph-internal-token:latest
+      # One instance keeps payment serialization meaningful. Parallel
+      # settlement across instances has not been tested.
+      - --min-instances
+      - "0"
+      - --max-instances
+      - "1"
+      - --memory
+      - 512Mi
+      - --cpu
+      - "1"
+      - --timeout
+      - "120"
+      - --concurrency
+      - "4"
+substitutions:
+  _REGION: us-central1
+  _TELEGRAPH_ENGINE_URL: http://13.237.89.59:7044/engine
+  _TELEGRAPH_NETWORK: eip155:84532
+  _TELEGRAPH_ASSET: "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+  _TELEGRAPH_PAYEE: "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8"
+  _TELEGRAPH_MAX_AMOUNT_ATOMIC: "10000"
+  _PER_CALL_USD: "0.01"
+  _PER_CASE_EVENT_USD: "0.03"
+  _DAILY_USD: "1.0"
+  _BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
+options:
+  logging: CLOUD_LOGGING_ONLY
+images:
+  - us-central1-docker.pkg.dev/$PROJECT_ID/nemesis/telegraph-gateway:$BUILD_ID

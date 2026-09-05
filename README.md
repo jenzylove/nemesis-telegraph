@@ -2,7 +2,7 @@
 
 **Autonomous crypto incident response for tracing stolen funds, preserving deterministic evidence, and continuing investigations when fund movement resumes.**
 
-> **Telegraph Track 3 fork:** This repository continues the frozen NEMESIS build from commit `d51a672ae631170609bd3c1f867cb8f5ef10375c` for the Telegraph Hackathon. The original NEMESIS repository and production deployment remain separate. The current checkpoint contains research and feasibility evidence only; full Telegraph integration has not begun.
+> **Telegraph Track 3 fork:** This repository continues the frozen NEMESIS build from commit `d51a672ae631170609bd3c1f867cb8f5ef10375c` for the Telegraph Hackathon. The original `jenzylove/nemesis` repository and its production deployment are untouched, and every service here deploys under a separate `nemesis-telegraph-*` name.
 
 **Live app:** https://nemesis-web-h7bnd6kzfq-uc.a.run.app
 
@@ -26,6 +26,55 @@ The system separates deterministic blockchain evidence from model interpretation
 - Persistent case graph, timeline, evidence, and branch state
 - Evidence-grounded incident classification with Google ADK and Gemini on Vertex AI
 - Risk enrichment and public abuse-report context with guarded attribution
+
+## Telegraph integration
+
+NEMESIS proves what happened on chain. Telegraph adds what a live network of
+ranked external miners knows about it. The two never mix.
+
+Every blockchain fact on a case comes from independent JSON-RPC verification.
+Telegraph contributes external opinion, and a receipt records what a miner said
+rather than what is true. When a miner contradicts RPC, the disagreement is
+persisted and shown; RPC still wins. When a miner has nothing, the case says so
+plainly instead of implying an address is clean.
+
+### When Telegraph is called
+
+Never on a timer, and never because a graph node appeared. Enrichment happens
+only after JSON-RPC verifies a change of fact:
+
+- a theft transaction passes verification when the case opens;
+- a dormant branch moves again, the movement is verified, and tracing resumes.
+
+The flagship path needs no human. A dormant branch wakes, the movement provider
+proposes a candidate, RPC verifies it, tracing resumes from persisted state, and
+only then does NEMESIS buy fresh transaction and destination intelligence, which
+lands on the case timeline on its own.
+
+A routine recheck that finds nothing spends nothing.
+
+### How payment is contained
+
+A separate Cloud Run service owns the payer key and everything x402. It quotes
+first, refuses any challenge outside a hard allowlist of network, asset, payee,
+scheme and amount, and only then signs. Spend is capped per call, per case event
+and per day, and payments run one at a time. Real settlements are verified
+against Base Sepolia rather than trusted.
+
+A Telegraph outage cannot change branch state, alter evidence, or stop a trace.
+The failure is persisted as a visible receipt and the investigation continues.
+
+### Evidence planes
+
+| Plane | May establish | Never establishes |
+|---|---|---|
+| JSON-RPC | transactions, transfers, amounts, timestamps, graph edges, branch state | anything external |
+| Telegraph | what a miner returned, its routing and payment metadata | any blockchain fact, or any real-world identity |
+| Gemini | classification, summary, prioritization | any fact not already referenced |
+
+Verified integration evidence, including settled payments checked on chain,
+lives in `docs/evidence/`. The running state of every capability is tracked in
+`docs/TELEGRAPH_INTEGRATION_LEDGER.md`.
 
 ## Architecture
 
