@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "observed_at_utc": "2026-09-05T20:55:00Z",
+  "what_this_proves": "The autonomous loop ran on deployed Cloud Run infrastructure, not locally. Cloud Scheduler triggered a monitoring tick, the deployed API rechecked a dormant branch, the real movement provider found a genuine Ethereum transfer, JSON-RPC verified it, tracing resumed and split, enrichment was published to a Telegraph-owned Pub/Sub topic, the push subscription delivered it back, the deployed gateway paid real x402 challenges, and receipts persisted to an isolated Firestore database and appeared on the public case page.",
+  "honesty_note": "One element is controlled: the branch cursor was seeded one block behind a real historical Ethereum transfer, so the monitoring path had verifiable movement to find rather than waiting on new activity. Everything downstream is real. No claim of theft or wrongdoing is made about any address in this case; they are ordinary mainnet addresses chosen only because the transfer between them is real and independently verifiable.",
+  "deployed_services": {
+    "web": "https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app",
+    "api": "https://nemesis-telegraph-api-h7bnd6kzfq-uc.a.run.app",
+    "gateway": "https://nemesis-telegraph-gateway-h7bnd6kzfq-uc.a.run.app",
+    "public_case": "https://nemesis-telegraph-api-h7bnd6kzfq-uc.a.run.app/v1/public/cases/NMS-TG-DEMO-002/telegraph"
+  },
+  "case_id": "NMS-TG-DEMO-002",
+  "subject": {
+    "chain": "ethereum",
+    "monitored_address": "0x663d98059d1c77e4d185f28b36e94f11120e5826",
+    "movement_transaction": "0xbdab85894d981ba9e4b6aad7a024564d62a53a38c158c67224ed9b8b2905239b",
+    "block": 25913380,
+    "value_wei": "22500505562000000000"
+  },
+  "timeline_observed": [
+    "MOVEMENT_DETECTED",
+    "TRACING_RESUMED",
+    "MOVEMENT_DETECTED",
+    "FUND_SPLIT_DETECTED",
+    "BRANCH_CREATED",
+    "BRANCH_DORMANT",
+    "MONITORING_ACTIVE",
+    "TELEGRAPH_ENRICHMENT_REQUESTED",
+    "TELEGRAPH_ENRICHMENT_FAILED",
+    "TELEGRAPH_INTELLIGENCE_RECEIVED"
+  ],
+  "settled_calls": [
+    {
+      "receipt_id": "TG-4EDE5A78F267083C8190",
+      "intent": "FRAUD_DETECTION",
+      "target_type": "transaction",
+      "miner_id": "91001",
+      "miner_name": "SarzOps Fraud Intelligence",
+      "routing_mode": "routed",
+      "reported_cost_usd": 0.01,
+      "duration_ms": 7676,
+      "signal_hash": "0x5b0c78940d29faee5e547c8c88cdefd41cd045b5c375ba9ac340f6dba1e07c15",
+      "settlement_transaction": "0xaddfd50d87696b1c7993157e46386b72fabdaeaa091fd6e6bf33d46ed9b81eb6",
+      "settlement_block": "46436633",
+      "independently_verified": true,
+      "label": "NO_EXTERNAL_SIGNAL"
+    },
+    {
+      "receipt_id": "TG-1EDF7F112A2C36738E0B",
+      "intent": "FRAUD_DETECTION",
+      "target_type": "address",
+      "miner_id": "91001",
+      "miner_name": "SarzOps Fraud Intelligence",
+      "routing_mode": "routed",
+      "reported_cost_usd": 0.01,
+      "duration_ms": 7483,
+      "signal_hash": "0xf0ff17037aa8796a3bb9af5d383130cb5c7e0cd7f1769a46e8a2a8e6f0821d99",
+      "settlement_transaction": "0x2b27a09cb4cc047c620d568cf6619cd771f43521b9e58c25d3a0610358380d7e",
+      "settlement_block": "46436634",
+      "independently_verified": true,
+      "label": "NO_EXTERNAL_SIGNAL"
+    },
+    {
+      "receipt_id": "TG-E70B4E3EAEA0DCADBF93",
+      "intent": "ONCHAIN_TX_LOOKUP",
+      "miner_name": "OnChain Intel Miner",
+      "routing_mode": "routed",
+      "reported_cost_usd": 0.01,
+      "settlement_transaction": "0xd0682ee0204f6391a3..."
+    },
+    {
+      "receipt_id": "TG-FC16A735E3DF26C597FF",
+      "intent": "FRAUD_DETECTION",
+      "miner_name": "DegenLens On-Chain Intelligence",
+      "routing_mode": "routed",
+      "reported_cost_usd": 0.01,
+      "settlement_transaction": "0x1ded644d0656fb42fd..."
+    }
+  ],
+  "failed_calls": {
+    "ROUTER_UNREACHABLE": 1,
+    "SPEND_LIMIT_EXCEEDED": 15,
+    "note": "All failures persisted as visible receipts. None changed branch state, and none stopped tracing. The router being unreachable once is the first live routing failure observed across the whole project."
+  },
+  "receipt_totals": {
+    "receipts_written": 20,
+    "succeeded": 4,
+    "failed": 16,
+    "settled_usdc": "0.04"
+  },
+  "spend_overrun": {
+    "approved_for_this_phase_usdc": "0.03",
+    "actually_settled_usdc": "0.04",
+    "overrun_usdc": "0.01",
+    "root_cause": "The daily spend ceiling was held in memory. Cloud Run tears the gateway down whenever it goes idle, so each cold start between five-minute scheduler ticks restarted the day at zero and the daily cap stopped binding. The per-call and per-case-event guards held throughout, and 15 calls were correctly refused, which is why the overrun was one cent rather than unbounded.",
+    "fix": "The counter now lives in Firestore, incremented server-side, consulted before every payment, and a counter that cannot be read refuses payment instead of assuming zero spend. The scheduler was paused as soon as the overrun was detected, and the durable counter was backfilled to the verified 0.04.",
+    "disclosed": true
+  },
+  "cumulative_project_spend_usdc": "0.07",
+  "payer_balance_after": "19.93",
+  "findings": [
+    "Five distinct miners have now answered across seven settled calls: ChainSight (302), SarzOps (91001), INTERLOCK, OnChain Intel, and DegenLens (10002). Rank predicted none of them, confirming that miner identity must be read from each response.",
+    "The router was unreachable for one call. The gateway recorded ROUTER_UNREACHABLE, the direct fallback could not run because the registry was unreachable in the same window, and the trace continued unaffected. This is the designed degradation and the first time it was exercised live.",
+    "An active mainnet address makes a poor demonstration subject. Because it transacts constantly, every scheduler tick found new movement and published fresh enrichment. The spend guards contained it, but a real incident case, where the thief is not moving funds every block, would not generate this volume."
+  ],
+  "evidence_boundary": "Real Telegraph-routed and settled calls on deployed infrastructure. NEMESIS JSON-RPC remains authoritative for every blockchain fact on the case."
+}

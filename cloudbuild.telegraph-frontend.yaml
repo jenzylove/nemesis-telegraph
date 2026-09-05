@@ -52,7 +52,7 @@ steps:
       - --concurrency
       - "40"
       - --set-env-vars
-      - NEXT_PUBLIC_NEMESIS_API_URL=${_API_URL}
+      - NEXT_PUBLIC_NEMESIS_API_URL=${_API_URL},GIT_SHA=${_GIT_SHA}
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
@@ -68,6 +68,8 @@ steps:
 
 substitutions:
   _REGION: us-central1
+  # Set at submit time so the running frontend is traceable to a commit.
+  _GIT_SHA: unknown
   _API_URL: https://nemesis-telegraph-api-h7bnd6kzfq-uc.a.run.app
   _FIREBASE_API_KEY: ""
   _FIREBASE_AUTH_DOMAIN: ""
