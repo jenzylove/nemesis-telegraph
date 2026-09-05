@@ -1,9 +1,0 @@
-Creating temporary archive of 141 file(s) totalling 1.4 MiB before compression.
-Uploading tarball of [.] to [gs://nemesis-506114_cloudbuild/source/1788644923.327993-b72e88a418ad4eb2a9d7d999baf536de.tgz]
-Created [https://cloudbuild.googleapis.com/v1/projects/nemesis-506114/locations/global/builds/c2dd1ec9-eb58-4166-a5d1-64990450aa39].
-Logs are available at [ https://console.cloud.google.com/cloud-build/builds/c2dd1ec9-eb58-4166-a5d1-64990450aa39?project=336543907032 ].
-
-gcloud builds submit only displays logs from Cloud Storage. To view logs from Cloud Logging, run:
-gcloud beta builds submit
-
-Waiting for build to complete. Polling interval: 1 second(s).

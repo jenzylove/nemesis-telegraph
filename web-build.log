@@ -1,4 +1,0 @@
-Creating temporary archive of 140 file(s) totalling 1.4 MiB before compression.
-Uploading tarball of [.] to [gs://nemesis-506114_cloudbuild/source/1788644863.038451-4861fb9e71d04264a4f8a8327a4698ae.tgz]
-ERROR: (gcloud.builds.submit) INVALID_ARGUMENT: invalid argument: key "COMMIT_SHA" in the substitution data is not matched in the template
-WEB_EXIT=1
