@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "observed_at_utc": "2026-09-05T11:12:00Z",
+  "what_this_proves": "The complete autonomous loop, running through the real NEMESIS trace lifecycle with a real paid Telegraph call: a dormant branch is rechecked, movement is verified over public Ethereum JSON-RPC, tracing resumes, enrichment is published as case events, one event settles a real x402 payment, and both the answer and the refusal are persisted as receipts on the case timeline.",
+  "honesty_note": "The movement feed is a controlled path. A dormant branch was seeded at an address whose next outgoing transaction is already known, so the run does not wait on a thief. Nothing else is simulated: NEMESIS fetched and normalized that transaction over RPC itself, and the Telegraph call was routed, paid, and settled for real. This is not presented as organic production activity.",
+  "case_id": "NMS-260826-915B337C",
+  "steps": [
+    {"step": "rpc_verification", "transaction": "0xb61413c495fdad6114a7aa863a00b2e3c28945979a10885b12b30316ea9f072c", "status": "success", "block_number": 21895251, "from": "0x0fa09c3a328792253f8dee7116848723b72a6d2e", "to": "0x1db92e2eebc8e0c075a02bea49a2935bcd2dfcf4", "note": "Verified before any spend was permitted."},
+    {"step": "autonomous_recheck", "movement": true, "note": "No human action. The dormant branch was rechecked and movement found."},
+    {"step": "trace_resumed", "resumed": true, "note": "Deterministic tracing resumed from persisted state before Telegraph was contacted."},
+    {"step": "enrichment_requested", "count": 2, "intents": ["ONCHAIN_TX_LOOKUP", "FRAUD_DETECTION"], "note": "One event per intent, published rather than awaited."},
+    {"step": "enrichment_consumed", "paid": 1, "refused_by_spend_ceiling": 1}
+  ],
+  "receipts": [
+    {
+      "id": "TG-91A7BBA484D9FE52DBFC",
+      "intent": "ONCHAIN_TX_LOOKUP",
+      "status": "SUCCEEDED",
+      "routing_mode": "routed",
+      "miner_name": "INTERLOCK On-Chain Transaction Lookup",
+      "reported_cost_usd": 0.01,
+      "duration_ms": 14713,
+      "signal_hash": "0xc3d5b1bac012f66da4c41378e1b833099d58d05246fb35c8f0ca68169b891d83",
+      "settlement_transaction": "0xc986db5d047d9fc360fb90aada3bbb90c276c7eb8a706d5ecec1963a21c657a2",
+      "discrepancy": null
+    },
+    {
+      "id": "TG-F4E34136B08AFAD84514",
+      "intent": "FRAUD_DETECTION",
+      "status": "FAILED",
+      "error_code": "SPEND_LIMIT_EXCEEDED",
+      "duration_ms": 487,
+      "note": "The per-case-event ceiling was deliberately set to 0.01 for this run. The guard refused the second call before signing, and the refusal is persisted as a visible receipt rather than silently dropped."
+    }
+  ],
+  "timeline_events": [
+    "MOVEMENT_DETECTED",
+    "TRACING_RESUMED",
+    "BRANCH_DORMANT",
+    "MONITORING_ACTIVE",
+    "TELEGRAPH_ENRICHMENT_REQUESTED",
+    "TELEGRAPH_INTELLIGENCE_RECEIVED",
+    "TELEGRAPH_ENRICHMENT_FAILED"
+  ],
+  "independent_settlement_verification": {
+    "network": "eip155:84532",
+    "transaction_hash": "0xc986db5d047d9fc360fb90aada3bbb90c276c7eb8a706d5ecec1963a21c657a2",
+    "receipt_status": "success",
+    "block_number": "46419256",
+    "usdc_transfers": [{"from": "0x8827d3AF20eFe02582aEA67a5E704C04BAd52324", "to": "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8", "usdc": "0.01"}],
+    "matches_approved_terms": true,
+    "payer_balance_after": "19.97"
+  },
+  "cumulative_test_spend_usdc": "0.03",
+  "branch_state_after_enrichment": {
+    "status": "DORMANT",
+    "note": "Branch state is decided by RPC-verified tracing alone. Neither the paid answer nor the refused call changed it."
+  },
+  "findings": [
+    "Three settled routed calls have now returned three different miners: ChainSight (302), SarzOps (91001), and INTERLOCK. Rank at the time of the audit predicted none of them. Reading miner identity from the response, rather than from a cached leaderboard, is confirmed as necessary.",
+    "End-to-end latency rose to 14.7 s on this call against 8.9 s and 8.7 s earlier. The 45 s gateway timeout and the decision to keep enrichment off the trace critical path both hold up.",
+    "This run exposed a labelling bug. summarize() marked a successful transaction lookup as NO_EXTERNAL_SIGNAL because the reply carried facts but no verdict field. That reads as an absence of information when the miner had in fact answered. It is now intent-aware: only a risk question may be summarized as an absence of risk signal, and an unknown intent still defaults to the cautious reading."
+  ],
+  "evidence_boundary": "Real Telegraph-routed and settled call. NEMESIS JSON-RPC remains authoritative for every blockchain fact on the case."
+}

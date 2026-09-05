@@ -233,11 +233,22 @@ def build_query(intent: str, target_type: str, target: str, chain: str | None, c
 _UNKNOWN_VERDICTS = {"recheck", "unknown", "no_data", "insufficient_data", "none"}
 
 
-def summarize(result: dict | None) -> dict:
+# Intents whose whole purpose is to say whether something looks bad. Only these
+# may be summarized as an absence of risk signal.
+_RISK_INTENTS = {"FRAUD_DETECTION"}
+
+# Fields that carry an answer rather than routing noise, used to decide whether
+# a non-risk intent actually returned anything.
+_EMPTY_KEYS = {"signal", "answer", "explanation", "source", "mode", "confidence"}
+
+
+def summarize(result: dict | None, intent: str | None = None) -> dict:
     """Pulls the display fields miners actually return, without inventing any.
 
-    An absent or non-committal risk answer becomes an explicit unknown. The one
-    thing this must never do is let silence read as an all-clear.
+    A risk question that comes back non-committal or empty becomes an explicit
+    unknown, because silence must never read as an all-clear. A lookup question
+    is different: returning facts and no verdict is a complete answer, so it is
+    not labelled as an absence of signal.
     """
     if not isinstance(result, dict):
         return {"label": None, "confidence": None, "risk_score": None, "coverage_complete": None}
@@ -245,12 +256,18 @@ def summarize(result: dict | None) -> dict:
     verdict = result.get("verdict") or result.get("risk_tier") or result.get("label")
     risk = result.get("risk_score")
     confidence = result.get("confidence")
+    is_risk_question = intent is None or intent.upper() in _RISK_INTENTS
 
     label = str(verdict) if verdict is not None else None
     if label is not None and label.strip().lower() in _UNKNOWN_VERDICTS:
-        label = "NO_EXTERNAL_SIGNAL"
+        label = "NO_EXTERNAL_SIGNAL" if is_risk_question else "INCONCLUSIVE"
     if label is None and risk is None:
-        label = "NO_EXTERNAL_SIGNAL"
+        if is_risk_question:
+            label = "NO_EXTERNAL_SIGNAL"
+        else:
+            # Anything beyond bookkeeping fields counts as a real answer.
+            substantive = [k for k, v in result.items() if k not in _EMPTY_KEYS and v not in (None, "", [], {})]
+            label = "ANSWERED" if substantive else "NO_EXTERNAL_SIGNAL"
 
     return {
         "label": label,
@@ -424,7 +441,7 @@ class TelegraphEnricher:
     def _apply(self, receipt: TelegraphReceipt, transport: dict, expected: dict) -> TelegraphReceipt:
         raw_result = transport.get("result")
         result = raw_result if isinstance(raw_result, dict) else None
-        summary = summarize(result)
+        summary = summarize(result, receipt.intent)
         receipt.status = "SUCCEEDED" if transport.get("status") == "succeeded" else "FAILED"
         receipt.routing_mode = transport.get("routing_mode") or "none"
         receipt.fallback_reason = transport.get("fallback_reason")

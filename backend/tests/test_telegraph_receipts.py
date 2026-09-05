@@ -229,3 +229,27 @@ def test_the_fraud_query_forbids_identity_inference():
     query = build_query("FRAUD_DETECTION", "address", ADDRESS, "ethereum", {})
     assert ADDRESS in query
     assert "Do not infer the real-world" in query
+
+
+def test_a_lookup_that_returned_facts_is_not_called_an_absence_of_signal():
+    """The live INTERLOCK reply: real transaction facts, no verdict field."""
+    summary = summarize({"status": "ok", "block_number": 21895251, "to": ADDRESS}, "ONCHAIN_TX_LOOKUP")
+    assert summary["label"] == "ANSWERED"
+
+
+def test_a_risk_question_with_no_verdict_still_reads_as_no_signal():
+    assert summarize({"source": "groq"}, "FRAUD_DETECTION")["label"] == "NO_EXTERNAL_SIGNAL"
+
+
+def test_a_lookup_that_returned_nothing_useful_reads_as_no_signal():
+    assert summarize({"source": "groq", "mode": "knowledge"}, "ONCHAIN_TX_LOOKUP")["label"] == "NO_EXTERNAL_SIGNAL"
+
+
+def test_a_non_committal_lookup_is_inconclusive_not_an_all_clear():
+    summary = summarize({"verdict": "RECHECK", "block_number": 1}, "ONCHAIN_TX_LOOKUP")
+    assert summary["label"] == "INCONCLUSIVE"
+
+
+def test_an_unknown_intent_is_treated_as_a_risk_question():
+    """The cautious default: if we cannot tell, do not imply safety."""
+    assert summarize({"source": "x"})["label"] == "NO_EXTERNAL_SIGNAL"
