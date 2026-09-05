@@ -1,19 +1,13 @@
 "use client";
 import {useState} from "react";
+import {shortHex,telegraphVerdict} from "./telegraph-semantics.mjs";
 
 export type TelegraphReceipt={id:string;intent:string;returned_intent:string|null;intent_matched:boolean|null;target_type:string;target_value:string;target_chain:string|null;routing_mode:string;fallback_reason:string|null;miner_id:string|null;miner_name:string|null;result:Record<string,unknown>|null;label:string|null;confidence:number|null;risk_score:number|null;coverage_complete:boolean|null;discrepancy:{fields:Record<string,{telegraph:unknown;rpc:unknown}>;authoritative:string}|null;quoted_cost_usdc:string|null;reported_cost_usd:number|null;duration_ms:number|null;signal_hash:string|null;payment:{network?:string;settlement_transaction?:string|null;settled?:boolean}|null;status:string;error_code:string|null;error:string|null;trigger:string;created_at:string;has_proof:boolean};
 export type TelegraphState={enabled:boolean;receipts:TelegraphReceipt[];summary:{total?:number;succeeded?:number;failed?:number;intents?:string[];miners?:string[];spend_usd?:number;discrepancies?:number}};
 
-const short=(v:string|null|undefined)=>!v?"—":v.length>16?`${v.slice(0,8)}…${v.slice(-6)}`:v;
+const short=shortHex;
 const BASE_SEPOLIA_TX="https://sepolia.basescan.org/tx/";
-
-/** What a miner said, in words that cannot be mistaken for a chain fact. */
-function verdict(r:TelegraphReceipt){
- if(r.status!=="SUCCEEDED")return{tone:"failed",text:"No answer"};
- if(r.label==="NO_EXTERNAL_SIGNAL")return{tone:"unknown",text:"No external signal"};
- if(typeof r.risk_score==="number")return{tone:r.risk_score>=0.5?"risk":"low",text:`${r.label||"Risk"} · ${r.risk_score.toFixed(2)}`};
- return{tone:"info",text:r.label||"Answered"};
-}
+const verdict=telegraphVerdict;
 
 function Receipt({r}:{r:TelegraphReceipt}){
  const[open,setOpen]=useState(false);
