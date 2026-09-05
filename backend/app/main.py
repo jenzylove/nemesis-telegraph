@@ -150,6 +150,15 @@ async def owned_case(case_id: str, user: dict):
 PRIVATE_CASE_FIELDS = ("owner_user_id", "owner_email")
 
 
+TELEGRAPH_BOUNDARY = (
+    "Telegraph results are paid external intelligence from independent miners. They record what a "
+    "miner reported, not what is true on chain. Every blockchain fact in this package is established "
+    "by NEMESIS JSON-RPC verification. A Telegraph result must not be treated as proof of identity, "
+    "ownership, or wrongdoing, and the absence of a Telegraph signal is not evidence that an address "
+    "is clean."
+)
+
+
 async def published_case(case_id: str):
     """A case the owner has published, or 404.
 
@@ -456,6 +465,26 @@ async def get_case_telegraph_receipt(case_id: str, receipt_id: str, user: dict =
     return telegraph_view(receipt)
 
 
+async def telegraph_evidence(case_id: str) -> dict:
+    """Telegraph receipts for the escalation package, with the caveats attached."""
+    if telegraph is None or not telegraph.enabled:
+        return {"enabled": False, "receipts": [], "boundary": TELEGRAPH_BOUNDARY}
+    found = await telegraph.receipts.list_by_case(case_id)
+    settled = [r for r in found if r.status == "SUCCEEDED"]
+    return {
+        "enabled": True,
+        "boundary": TELEGRAPH_BOUNDARY,
+        "call_count": len(found),
+        "answered_count": len(settled),
+        "settled_spend_usd": round(sum(r.reported_cost_usd or 0 for r in settled), 6),
+        "receipts": [r.model_dump(mode="json") for r in found],
+        "disagreements_with_rpc": [
+            {"receipt_id": r.id, "target": r.target_value, "fields": r.discrepancy["fields"]}
+            for r in settled if r.discrepancy
+        ],
+    }
+
+
 @app.get("/v1/cases/{case_id}/evidence-package")
 async def get_evidence_package(case_id: str, user: dict = Depends(require_user)):
     case = await owned_case(case_id, user)
@@ -491,6 +520,10 @@ async def get_evidence_package(case_id: str, user: dict = Depends(require_user))
                 if not item.startswith("0x")
             }),
         },
+        # A third plane, kept beside the deterministic facts rather than inside
+        # them. An escalation reader must be able to tell at a glance which
+        # claims are verified and which are somebody else's opinion.
+        "telegraph_intelligence": await telegraph_evidence(case_id),
         "nemesis_assessment": case.finding.model_dump(mode="json") if case.finding else None,
         "unknowns_and_limitations": case.finding.limitations if case.finding else [case.error or "Model assessment unavailable."],
     }

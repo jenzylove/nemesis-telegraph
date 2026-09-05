@@ -149,3 +149,26 @@ async def test_a_case_with_no_intelligence_returns_an_empty_plane(wired):
 async def test_health_reports_telegraph_as_off_when_unconfigured(monkeypatch):
     monkeypatch.setattr(main, "telegraph", None)
     assert (await main.telegraph_health()) == {"enabled": False, "reason": "not configured"}
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_package_keeps_telegraph_on_its_own_plane(wired):
+    clash = {"fields": {"status": {"telegraph": "failed", "rpc": "ok"}}, "authoritative": "json_rpc"}
+    await wired.save(receipt("NMS-PRIVATE", "TG-1"))
+    await wired.save(receipt("NMS-PRIVATE", "TG-2", discrepancy=clash))
+    plane = await main.telegraph_evidence("NMS-PRIVATE")
+    assert plane["call_count"] == 2
+    assert plane["settled_spend_usd"] == 0.02
+    assert plane["disagreements_with_rpc"][0]["receipt_id"] == "TG-2"
+    # The caveat travels with the evidence, not in a footnote somewhere else.
+    assert "not evidence that an address is clean" in plane["boundary"]
+    assert "not what is true on chain" in plane["boundary"]
+
+
+@pytest.mark.asyncio
+async def test_the_package_states_the_boundary_even_with_telegraph_off(monkeypatch):
+    monkeypatch.setattr(main, "telegraph", None)
+    plane = await main.telegraph_evidence("NMS-PRIVATE")
+    assert plane["enabled"] is False
+    assert plane["receipts"] == []
+    assert plane["boundary"]
