@@ -95,6 +95,23 @@
 | Deployed UI | Production verified | The shipped page chunk carries the Telegraph panel and its evidence-boundary copy, pointed at the Telegraph API. The public case page answers 200 and its receipts are all marked non-authoritative with proof on all four settled calls. |
 | Durable spend ceiling | Production verified | The in-memory ceiling did not survive Cloud Run restarts and allowed a one cent overrun. The counter now lives in Firestore, is consulted before every payment, and refuses payment when it cannot be read. Live gateway reports 0.04 spent against a 0.03 ceiling, so further payment is refused. |
 | Firebase auth for the Telegraph frontend | Blocked | No Firebase web app config was available, so the deployed frontend has no sign-in. Public case pages work without it, which is enough for judging, but creating a case through the deployed UI does not. |
+
+## Judge-facing UI checkpoint — 2026-09-05
+
+- Deployed frontend commit `c2efcb6f` separates the case into Onchain Evidence,
+  Telegraph Intelligence, and Agent Assessment planes with explicit authority
+  labels.
+- Telegraph receipts default to the four successful paid answers; sixteen
+  guarded/refused attempts remain available through Guarded and All filters.
+- The public demo case now carries the same normalized RPC evidence for
+  transaction `0xbdab85894d981ba9e4b6aad7a024564d62a53a38c158c67224ed9b8b2905239b`
+  that the deployed monitoring flow already verified. The one-time repair used
+  an update mask for `cases/NMS-TG-DEMO-002.evidence` only. Receipt totals,
+  historical spend, branches, timeline, Scheduler, Pub/Sub, and payment state
+  were not modified.
+- Public API verification after the repair: evidence present, transaction
+  status `success`, block `25913380`; Telegraph totals unchanged at 20 receipts,
+  4 succeeded, 16 failed/guarded, and $0.04 historical settled spend.
 | Direct fallback paid proof | Blocked | The router failed once in production (ROUTER_UNREACHABLE) but the registry was unreachable in the same window, so no fallback candidate could be chosen. Still unexercised. |
 | Discord, submission form, X posts, demo video | Blocked | Needs account access. |
 
