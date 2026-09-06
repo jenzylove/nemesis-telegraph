@@ -67,3 +67,34 @@ test("every request carries a freshly minted token", () => {
   assert.match(gate, /await current\.getIdToken\(\)/);
   assert.match(gate, /onAuthStateChanged\(auth/);
 });
+
+// --- wallet-first: ambiguity must not dead-end the investigation ---
+const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+const provisional = readFileSync(new URL("../app/provisional-incident.tsx", import.meta.url), "utf8");
+
+test("the case screen renders a provisional incident instead of blocking", () => {
+  assert.match(page, /PROVISIONAL_INCIDENT/);
+  assert.match(page, /<ProvisionalIncident/);
+});
+
+test("a provisional pick is labelled likely, never proven", () => {
+  assert.match(provisional, /LIKELY INCIDENT IDENTIFIED/);
+  assert.match(provisional, /NOT A CONFIDENT SELECTION/);
+  assert.match(provisional, /is <b>not proven<\/b>/);
+});
+
+test("selection confidence is shown honestly rather than hidden", () => {
+  assert.match(provisional, /Math\.round\(confidence\*100\)/);
+  assert.match(provisional, /SELECTION CONFIDENCE/);
+});
+
+test("alternatives stay reachable as an override, behind a disclosure", () => {
+  assert.match(provisional, /other plausible transactions/);
+  assert.match(provisional, /Investigate this instead/);
+  assert.match(provisional, /useState\(false\)/);
+});
+
+test("the provisional panel still states the transaction itself is verified", () => {
+  assert.match(provisional, /RPC verified/);
+  assert.match(provisional, /moved value out of this wallet/);
+});

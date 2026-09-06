@@ -155,9 +155,24 @@ async def rank_verified_candidates(provider, chain, wallet, discovery):
         discovery.ambiguity_reason = None
         return verified[0][1]
 
-    discovery.status = "AMBIGUOUS_INCIDENT"
-    discovery.selected_transaction_hash = None
-    discovery.ambiguity_reason = (
-        f"Top candidates are separated by only {margin:.1f} points; choose a candidate or add an incident time."
+    # Ambiguity is a statement about ranking, not about evidence. The leading
+    # candidate is still a real transaction that RPC has verified and that
+    # demonstrably moved value out of this wallet, so the investigation
+    # continues from it rather than stopping and asking a victim to identify
+    # their own theft transaction.
+    #
+    # It is labelled provisional and keeps its confidence, its runner-ups and
+    # the reason it is close, so nothing downstream can mistake it for a
+    # confident selection.
+    discovery.status = "PROVISIONAL_INCIDENT"
+    discovery.selected_transaction_hash = verified[0][0].transaction_hash.lower()
+    others = len(verified) - 1
+    retained = (
+        f" {others} other verified outflow{'s are' if others != 1 else ' is'} retained as plausible."
+        if others else ""
     )
-    return None
+    discovery.ambiguity_reason = (
+        f"Top candidates are separated by only {margin:.1f} points, so this is the strongest "
+        f"RPC-verified outflow rather than a confident selection.{retained}"
+    )
+    return verified[0][1]

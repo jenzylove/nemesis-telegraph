@@ -43,12 +43,20 @@ class Provider:
 
 
 @pytest.mark.asyncio
-async def test_near_tie_is_ambiguous_and_does_not_select():
+async def test_near_tie_is_provisional_and_is_not_a_confident_selection():
+    """A near tie no longer blocks. It continues, labelled provisional.
+
+    Wallet-first investigation is the product promise, so ambiguity between two
+    verified outflows must not put the burden of identifying the theft
+    transaction back on the victim.
+    """
     item = discovery([70, 69])
     result = await rank_verified_candidates(Provider(), "ethereum", WALLET, item)
-    assert result is None
-    assert item.status == "AMBIGUOUS_INCIDENT"
-    assert item.selected_transaction_hash is None
+    assert result is not None
+    assert item.status == "PROVISIONAL_INCIDENT"
+    assert item.status != "SELECTED"
+    assert item.selected_transaction_hash == result.hash.lower()
+    # Runners-up are retained so the user can override, not so they must.
     assert len(item.candidates) == 2
 
 

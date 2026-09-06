@@ -98,3 +98,14 @@
 .tgToggle:hover{border-color:var(--amber);color:var(--amber)}
 .tgRaw{margin:12px 0 0;padding:12px;background:#070909;border:1px solid var(--line);overflow-x:auto;font:11px monospace;color:#9fb0a8;max-height:340px}
 @media(max-width:620px){.tgBoundary{display:block}.tgBoundary b{display:block;margin-bottom:6px}.tgSummary{grid-template-columns:1fr 1fr}.tgReceipt{padding:13px}.tgReceipt header{display:block}.tgVerdict{display:inline-block;margin-top:9px}.tgMeta{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tgFilters{display:grid;grid-template-columns:1fr}.tgFilters button{text-align:left}}
+
+/* A provisional selection is honest about being provisional: amber like the
+   external plane, never the acid green reserved for proven facts. */
+.provisional{grid-column:1/-1;border-left:2px solid var(--amber)}
+.provisional h3{margin:14px 0 8px;font-size:16px}
+.provisional>p{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 14px}
+.provisionalFacts{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px;font-size:12px;color:var(--muted)}
+.provisionalFacts span{border:1px solid var(--line);padding:7px 11px}
+.provisionalFacts b{color:var(--text)}
+.provisionalAlternatives{margin-top:14px}
+.provisionalAlternatives button{margin-top:8px}

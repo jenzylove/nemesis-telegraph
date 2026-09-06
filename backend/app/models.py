@@ -105,7 +105,7 @@ class DiscoveryCandidate(BaseModel):
 class IncidentDiscovery(BaseModel):
     model_config = ConfigDict(extra="forbid")
     source: Literal["bitquery", "alchemy"]
-    status: Literal["SELECTED", "AMBIGUOUS_INCIDENT"] = "SELECTED"
+    status: Literal["SELECTED", "PROVISIONAL_INCIDENT", "AMBIGUOUS_INCIDENT"] = "SELECTED"
     selected_transaction_hash: str | None = None
     selected_score: float | None = None
     incident_selection_confidence: float = Field(default=0, ge=0, le=1)
