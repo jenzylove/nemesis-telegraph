@@ -70,3 +70,7 @@ d-*.log
 .judge-account.local
 p-*.log
 ux-*.log
+
+# Build artifacts and local transcripts
+tsconfig.tsbuildinfo
+*.log

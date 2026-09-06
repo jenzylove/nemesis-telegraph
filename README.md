@@ -1,315 +1,357 @@
 # NEMESIS
 
-**Autonomous crypto incident response for tracing stolen funds, preserving deterministic evidence, and continuing investigations when fund movement resumes.**
+**Autonomous stolen-fund investigations that verify what happened onchain, trace where funds move, and purchase independent intelligence from live Telegraph miners as the case evolves.**
 
-> **Telegraph Track 3 fork:** This repository continues the frozen NEMESIS build from commit `d51a672ae631170609bd3c1f867cb8f5ef10375c` for the Telegraph Hackathon. The original `jenzylove/nemesis` repository and its production deployment are untouched, and every service here deploys under a separate `nemesis-telegraph-*` name.
+| | |
+|---|---|
+| **Live app** | https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app |
+| **Public demo** (no sign-in) | https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app/?case=NMS-TG-DEMO-002 |
+| **Telegraph track** | Track 3 — Applications |
+| **Network** | Base Sepolia · x402 · test USDC |
 
-**Live app (original NEMESIS submission, unchanged):** https://nemesis-web-h7bnd6kzfq-uc.a.run.app
+---
 
-**Live app (Telegraph Track 3):** https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app
+## What it does
 
-NEMESIS starts from an affected wallet or known theft transaction, identifies and verifies suspicious outflow, traces stolen assets across subsequent transactions, persists every branch of the investigation, and keeps dormant paths under monitoring so tracing can resume automatically when funds move again.
+A victim usually knows one thing: their wallet. Everything else has to be discovered.
 
-## Why NEMESIS
+```
+Affected wallet
+  → likely incident identified from wallet history
+  → transaction verified onchain
+  → stolen funds traced across branches
+  → a meaningful case event triggers Telegraph
+  → live miner routed
+  → x402 test-USDC payment settles
+  → miner intelligence persisted with payment proof
+  → investigation keeps monitoring for new movement
+```
 
-Traditional block explorers expose transactions. NEMESIS turns those transactions into a persistent incident investigation.
+No step in that chain asks the user to identify their own theft transaction, and no step
+waits on Telegraph to continue.
 
-The system separates deterministic blockchain evidence from model interpretation. Transaction receipts, transfer logs, timestamps, amounts, branch paths, and graph state are collected and persisted first. Agent reasoning is applied only after that evidence exists.
+---
 
-## Core capabilities
+## Why Telegraph matters
 
-- Wallet-first incident discovery when the theft transaction is unknown
-- Direct investigation from a known theft transaction
-- Deterministic Ethereum and Base transaction verification
-- Multi-hop stolen-fund tracing
-- Split branch detection and persistence
-- Swap and supported bridge continuation
-- Dormant branch monitoring and automatic trace resume
-- Persistent case graph, timeline, evidence, and branch state
-- Evidence-grounded incident classification with Google ADK and Gemini on Vertex AI
-- Risk enrichment and public abuse-report context with guarded attribution
+NEMESIS can prove what happened on a chain. It cannot know what the rest of the world
+has already seen. That gap is where a real investigation stalls, and it is exactly what
+Telegraph fills.
 
-## Telegraph integration
+The split is strict:
 
-NEMESIS proves what happened on chain. Telegraph adds what a live network of
-ranked external miners knows about it. The two never mix.
+- **NEMESIS establishes blockchain truth.** Transaction existence, status, transfers,
+  amounts, destinations, graph edges and branch state come from independent chain
+  verification and nothing else.
+- **Telegraph supplies paid external intelligence.** Independent miners are asked about
+  a transaction or a destination once the chain evidence justifies the question.
+- **NEMESIS validates that intelligence before using it.** A miner answer is checked
+  against verified facts and classified before it is allowed to appear as a finding. It
+  can add context. It can never overwrite a chain fact.
 
-Every blockchain fact on a case comes from independent JSON-RPC verification.
-Telegraph contributes external opinion, and a receipt records what a miner said
-rather than what is true. When a miner contradicts RPC, the disagreement is
-persisted and shown; RPC still wins. When a miner has nothing, the case says so
-plainly instead of implying an address is clean.
+### Intents actually used
 
-### When Telegraph is called
+| Intent | Purpose | Settled calls |
+|---|---|---:|
+| `FRAUD_DETECTION` | Risk context on a verified destination or transaction | 8 |
+| `ONCHAIN_TX_LOOKUP` | Independent read of a transaction NEMESIS already verified | 3 |
 
-Never on a timer, and never because a graph node appeared. Enrichment happens
-only after JSON-RPC verifies a change of fact:
+`NEWS_SEARCH` is implemented behind a narrow public-context trigger but has not fired in
+production, so it is not claimed as used. The
+[integration ledger](docs/TELEGRAPH_INTEGRATION_LEDGER.md) tracks it honestly.
 
-- a theft transaction passes verification when the case opens;
-- a dormant branch moves again, the movement is verified, and tracing resumes.
+### Paid does not mean useful
 
-The flagship path needs no human. A dormant branch wakes, the movement provider
-proposes a candidate, RPC verifies it, tracing resumes from persisted state, and
-only then does NEMESIS buy fresh transaction and destination intelligence, which
-lands on the case timeline on its own.
+A miner can settle a payment and still tell you nothing. One live response confidently
+claimed a well-known analytics firm had flagged an address as high risk. The "address"
+was a transaction hash, and the payload declared `mode: knowledge` — an LLM answering
+from memory rather than data.
 
-A routine recheck that finds nothing spends nothing.
+Every paid response is therefore classified:
 
-### How payment is contained
+| State | Meaning |
+|---|---|
+| **Accepted intelligence** | A real observation, compatible with verified facts |
+| **No case-specific signal** | Answered, but non-committal or recalled rather than observed |
+| **Conflicted** | Substantively contradicts the chain; recorded, never accepted |
 
-A separate Cloud Run service owns the payer key and everything x402. It quotes
-first, refuses any challenge outside a hard allowlist of network, asset, payee,
-scheme and amount, and only then signs. Spend is capped per call, per case event
-and per day, and payments run one at a time. Real settlements are verified
-against Base Sepolia rather than trusted.
+Only an accepted answer is shown in its own words or counted as intelligence. Everything
+else keeps its receipt, its settlement proof and its full raw payload for audit. This is
+per-result validation, not a reputation system: no miner is blacklisted for one answer.
 
-A Telegraph outage cannot change branch state, alter evidence, or stop a trace.
-The failure is persisted as a visible receipt and the investigation continues.
+---
 
-### Evidence planes
+## Live proof
 
-| Plane | May establish | Never establishes |
-|---|---|---|
-| JSON-RPC | transactions, transfers, amounts, timestamps, graph edges, branch state | anything external |
-| Telegraph | what a miner returned, its routing and payment metadata | any blockchain fact, or any real-world identity |
-| Gemini | classification, summary, prioritization | any fact not already referenced |
+Real, settled, and independently checked against the chain:
 
-Verified integration evidence, including settled payments checked on chain,
-lives in `docs/evidence/`. The running state of every capability is tracked in
-`docs/TELEGRAPH_INTEGRATION_LEDGER.md`.
+- **11 settled x402 payments** on Base Sepolia in test USDC, all within a hard allowlist
+  of network, asset, payee and amount
+- **4 different miners** answered across those calls; the routed miner is read from each
+  response rather than assumed, because rank never predicted it
+- **All 11 receipts carry a signal hash**, persisted only because Telegraph returned one
+- **Every settlement verified independently** by reading the Base Sepolia transaction and
+  confirming a single USDC transfer to the expected payee
+- **Miner results render in the case UI** with cost, network, settlement reference and an
+  explorer link
+- **Disagreement and no-signal handling** are visible rather than hidden
+- **Judge-triggered usage stays enabled** — the daily ceiling is funded so a new
+  investigation really does buy intelligence
 
-### Deployment
+Evidence artifacts, including raw settled responses:
 
-The Telegraph build runs as its own set of services. The submitted NEMESIS
-deployment keeps its own services, database, topic and schedule, and nothing
-here writes to any of them.
+| File | What it proves |
+|---|---|
+| [`telegraph-smoke-2026-09-04.json`](docs/evidence/telegraph-smoke-2026-09-04.json) | Live registry, real x402 challenge, miner schemas |
+| [`telegraph-settled-smoke-2026-09-05.json`](docs/evidence/telegraph-settled-smoke-2026-09-05.json) | First settled payment, verified on chain |
+| [`telegraph-gateway-smoke-2026-09-05.json`](docs/evidence/telegraph-gateway-smoke-2026-09-05.json) | Gateway service paying end to end |
+| [`telegraph-e2e-2026-09-05.json`](docs/evidence/telegraph-e2e-2026-09-05.json) | Full autonomous loop locally |
+| [`telegraph-deployed-e2e-2026-09-05.json`](docs/evidence/telegraph-deployed-e2e-2026-09-05.json) | The same loop on deployed infrastructure |
 
-| Component | Telegraph Track 3 | Original submission |
-|---|---|---|
-| Web | `nemesis-telegraph-web` | `nemesis-web` |
-| API | `nemesis-telegraph-api` | `nemesis-api-staging` |
-| Payment gateway | `nemesis-telegraph-gateway` | none |
-| Firestore database | `nemesis-telegraph` | `(default)` |
-| Pub/Sub topic | `nemesis-telegraph-case-events` | `nemesis-case-events` |
-| Scheduler job | `nemesis-telegraph-monitor-tick` | `nemesis-monitor-tick` |
-| Runtime identity | `nemesis-telegraph@` | `nemesis-runtime@` |
-| Secrets | `nemesis-telegraph-*` | `nemesis-staging-*` |
-
-Firestore isolation is what matters most, and it comes from a single setting.
-The whole application shares one Firestore client, so naming a separate
-database keeps every collection apart: cases, branches, timeline, graph,
-processed events and Telegraph receipts.
-
-The gateway is not publicly reachable. It requires Cloud Run IAM and a
-separate shared secret in its own header, holds the only copy of the payer
-key, runs at one instance so payments stay serialized, and keeps its daily
-spend counter in Firestore so a restart cannot reset the ceiling.
-
-Every service reports the commit it is running at `/health`.
+---
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    U[User] --> W[Next.js Web App]
-    W --> A[FastAPI API on Cloud Run]
-
-    A --> D[Incident Discovery]
-    D --> IDX[Indexed EVM History]
-    D --> RISK[Risk / Abuse Enrichment]
-
-    A --> RPC[Ethereum + Base JSON RPC]
-    RPC --> E[Deterministic Evidence]
-
-    E --> T[Trace Engine]
-    E --> G[Google ADK + Gemini]
-
-    T --> F[(Firestore)]
-    G --> F
-
-    F --> P[Pub/Sub]
-    S[Cloud Scheduler] --> M[Dormant Branch Recheck]
-    M --> RPC
-    M --> P
-    P --> T
-
-    T --> X[Persisted Fund Graph + Timeline]
-    X --> W
-```
-
-### Investigation flow
-
-```mermaid
 flowchart TD
-    S[Wallet or theft transaction] --> K{Transaction known?}
-    K -->|Yes| V[RPC verification]
-    K -->|No| D[Wallet history discovery]
-    D --> V
-    V --> E[Persist deterministic evidence]
-    E --> C[Classify incident]
-    E --> T[Trace stolen funds]
-    T --> B{Branch state}
-    B -->|Moving| T
-    B -->|Dormant| M[Persist + monitor]
-    B -->|Actionable| A[Prepare escalation evidence]
-    M --> N{New movement?}
-    N -->|Yes| T
-    N -->|No| M
+    U[User] --> W[NEMESIS Web]
+    W --> A[FastAPI case runtime]
+
+    A --> D[Wallet history discovery]
+    D --> V[Onchain verification<br/>Ethereum + Base]
+    A --> V
+    V --> E[Deterministic evidence]
+    E --> T[Trace engine]
+    T --> F[(Firestore)]
+
+    T --> EV{Meaningful case event?}
+    EV -->|Verified incident or movement| GW[Telegraph Gateway<br/>isolated Cloud Run service]
+    EV -->|Routine recheck| T
+
+    GW --> R[Telegraph routing]
+    R --> MN[Live miner]
+    GW --> X[x402 settlement<br/>Base Sepolia test USDC]
+    MN --> RES[Miner result]
+    X --> PRF[Payment proof<br/>settlement tx + signal hash]
+
+    RES --> CLS[Validate against verified facts]
+    PRF --> CLS
+    CLS --> F
+    F --> W
+
+    E --> GEM[Gemini interpretation<br/>bounded, not authoritative]
+    GEM --> F
+
+    S[Cloud Scheduler] --> RC[Dormant branch recheck]
+    RC --> V
+
+    classDef truth fill:#0d2818,stroke:#3fb950,color:#e6edf3
+    classDef external fill:#2d2410,stroke:#d29922,color:#e6edf3
+    classDef interp fill:#1c2128,stroke:#8b949e,color:#e6edf3
+    class V,E,T truth
+    class GW,R,MN,X,RES,PRF external
+    class GEM interp
 ```
 
-## System design
+Green is chain truth. Amber is paid external intelligence. Grey is interpretation. The
+arrows never run the other way: nothing amber or grey writes into the green path.
 
-### Evidence first
+A Telegraph outage cannot change branch state, alter evidence, or stop a trace. The
+failure is persisted as a visible receipt and the investigation continues.
 
-The blockchain evidence layer owns transaction facts, transfer paths, amounts, timestamps, graph structure, and branch state. Model output cannot replace or invent those facts.
+---
 
-### Persistent investigations
+## Try it
 
-Each case is stored with its evidence, branches, graph nodes and edges, timeline, monitoring state, and provenance. A case can continue after the original browser session ends.
+**Fastest route, no account:** open the
+[public demo case](https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app/?case=NMS-TG-DEMO-002).
+It is read-only and shows the finished investigation, its Telegraph receipts and the
+x402 payment proof.
 
-### Autonomous monitoring
+**Run a real investigation:**
 
-When a traced path stops moving, NEMESIS marks that branch dormant instead of treating the investigation as finished. Scheduled rechecks examine the branch again. Confirmed movement creates a new event and tracing resumes from the persisted branch state.
+1. Open the [live app](https://nemesis-telegraph-web-h7bnd6kzfq-uc.a.run.app)
+2. Sign in with email and password (creating a new investigation requires an account;
+   reading a published case never does)
+3. Enter an affected Ethereum or Base wallet address
+4. NEMESIS discovers the incident, verifies it onchain, traces the funds, and purchases
+   Telegraph intelligence when the case warrants it
 
-### Guarded interpretation
+The case screen is organised so each section answers one question: Overview (what
+happened), Fund trace (where the funds went), Verified evidence (what we know for sure),
+Telegraph intelligence (what external miners found), Assessment (what NEMESIS thinks it
+means), Timeline (how the investigation progressed).
 
-Google ADK and Gemini classify and summarize verified evidence. Findings remain tied to evidence references and explicit limitations. NEMESIS does not infer a real-world identity from an address alone.
+---
 
-## Production stack
+## Telegraph documentation
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | Next.js / React |
-| API | FastAPI |
-| Cloud runtime | Google Cloud Run |
-| Persistence | Firestore |
-| Agent runtime | Google ADK |
-| Model | Gemini 3.5 Flash on Vertex AI |
-| Eventing | Google Cloud Pub/Sub |
-| Monitoring | Google Cloud Scheduler |
-| Chain evidence | Ethereum and Base JSON RPC |
-| Incident discovery | Alchemy historical transfers |
-| Risk context | GoPlus and Chainabuse |
+| Document | Contents |
+|---|---|
+| [Architecture decision](docs/TELEGRAPH_ARCHITECTURE_DECISION.md) | Why an isolated gateway, options compared, frozen receipt contract |
+| [Live audit](docs/TELEGRAPH_LIVE_AUDIT.md) | Registry, leaderboard, miner schemas, x402 terms observed live |
+| [Integration ledger](docs/TELEGRAPH_INTEGRATION_LEDGER.md) | Every capability with its status and evidence, including what is still blocked |
+| [Evidence artifacts](docs/evidence/) | Raw settled responses and independent settlement checks |
+| [Product requirements](nemesis-telegraph-prd.md) | The brief this build was written against |
 
-## Real investigation path
+---
 
-A user can begin with an affected wallet alone or provide a known theft transaction.
+## Evidence boundaries
 
-When the transaction is unknown, NEMESIS searches indexed wallet activity for incident candidates, scores them using deterministic signals, and then independently verifies the selected candidate through blockchain RPC before it is admitted into the investigation.
+| Plane | May establish | Never establishes |
+|---|---|---|
+| Onchain verification | transactions, transfers, amounts, timestamps, graph edges, branch state | anything external |
+| Telegraph | what a miner returned, its routing and payment metadata | any blockchain fact, or any real-world identity |
+| Gemini | classification, summary, prioritisation | any fact not already referenced |
 
-Once verified, NEMESIS persists the evidence, classifies the likely compromise mechanism, creates trace branches, recursively follows qualifying fund movement, and exposes the resulting graph and timeline to the case workspace.
+A Telegraph result never becomes an identity claim. NEMESIS does not assert thief
+identity, exchange account ownership, KYC access, or guaranteed recovery. Where the
+evidence is not conclusive, the case says so: a close call between candidate outflows is
+labelled a **likely incident** with its real confidence, not presented as proof.
 
-## Monitoring lifecycle
+---
 
-A trace branch can move through investigation states such as `MOVING`, `DORMANT`, `OBSCURED`, and `ACTIONABLE`.
+## Spend safety
 
-Dormant does not mean complete. It means the currently visible trail has stopped moving. NEMESIS keeps that branch in persistent state and rechecks it for confirmed outgoing movement. When movement appears, tracing resumes from the exact stored branch rather than rebuilding the case from scratch.
+Telegraph costs real money, so the gateway is the only component that holds the payer key
+or speaks x402, and it is not publicly reachable.
 
-## Safety and evidence boundaries
+- Quote first, then check the challenge against a hard allowlist of network, asset,
+  payee, scheme and amount — every refusal happens before anything is signed
+- Ceilings per call, per case event and per day
+- The daily counter lives in Firestore, so a container restart cannot reset it, and a
+  counter that cannot be read refuses payment rather than assuming zero
+- Payments run one at a time
+- Idempotency is guarded twice: the event claim and the receipt claim
+- Cloud Run IAM plus a separate shared secret in its own header
 
-NEMESIS is an investigation and evidence system. It does not claim access to exchange customer records, private KYC data, fund-freezing powers, law-enforcement systems, or guaranteed asset recovery.
-
-It does not claim:
-
-- a thief's real-world identity from an address alone
-- exchange account holder details
-- customer UID, email, or KYC access
-- guaranteed exchange cooperation
-- guaranteed fund recovery
-
-Attribution and escalation remain bounded by the evidence available to the system.
+---
 
 ## Repository structure
 
-```text
-app/        Web application and investigation workspace
-backend/    FastAPI API, evidence pipeline, tracing, monitoring, and agents
-docs/       Architecture and implementation notes
-infra/      Google Cloud deployment/bootstrap resources
+```
+app/                     Next.js case experience, Telegraph panels, evidence planes
+backend/app/             FastAPI runtime, discovery, tracing, Telegraph client, receipts
+backend/tests/           Backend test suite
+gateway/                 Isolated TypeScript x402 gateway (payer key lives only here)
+gateway/test/            Gateway test suite
+docs/                    Telegraph architecture, audit, ledger and evidence
+scripts/                 Operational and evidence scripts
+tests/                   Frontend tests
 ```
 
-For a deeper technical breakdown of the evidence boundary, trace lifecycle, persistence model, monitoring loop, and integration limits, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
-## Verification
-
-The repository includes automated backend and frontend verification through GitHub Actions. Real investigation paths have been exercised against Ethereum and Base with persisted Firestore case state, trace branches, graph updates, timeline events, dormant monitoring, and agent-generated structured findings.
-
-Synthetic demo data is kept separate from the real investigation path and is labelled as demo state in the UI.
-
+---
 
 ## Run it yourself
 
-Everything below is the same path this project is built and deployed through.
-
 ### Prerequisites
 
-- Node.js 22.13+ and Python 3.12
-- A Google Cloud project with billing enabled
-- A Firebase web app in that project, with Google and Email/Password sign-in enabled
-- An Alchemy key (wallet-only discovery needs indexed history) and an Ethereum + Base
-  JSON-RPC endpoint. Bitquery, GoPlus and Chainabuse are optional and degrade cleanly.
+Node 22.13+, Python 3.12+, an Ethereum and a Base RPC endpoint, a Google Cloud project
+with Firestore and Pub/Sub, and — for Telegraph — a low-balance Base Sepolia burner
+holding test USDC.
 
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/jenzylove/nemesis.git
-cd nemesis
-cp .env.example .env      # .env is git-ignored; never commit real credentials
+git clone https://github.com/jenzylove/nemesis-telegraph.git
+cd nemesis-telegraph
+cp .env.example .env
 ```
-
-Fill in `.env`. The four `NEXT_PUBLIC_FIREBASE_*` values come from your Firebase web
-app config, and `GOOGLE_CLOUD_PROJECT` / `FIRESTORE_PROJECT_ID` are your project id.
 
 ### 2. Run the API
 
 ```bash
 cd backend
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8080
 ```
 
-`GET http://localhost:8080/health` reports which runtime, agent and providers actually
-resolved, so it is the fastest way to confirm your configuration took effect.
+### 3. Run the Telegraph gateway
 
-### 3. Run the web app
-
-```bash
-npm install --no-audit --no-fund
-NEXT_PUBLIC_NEMESIS_API_URL=http://localhost:8080 npm run dev
-```
-
-Open the printed URL. The landing page is public; authentication is required only when
-an investigation is submitted or a saved case is opened.
-
-### 4. Run the tests
+The gateway is optional. Without it, tracing works and enrichment reports itself as
+unavailable.
 
 ```bash
-npm test                                    # frontend
-cd backend && python -m pytest -q tests      # backend
+cd gateway
+npm install
+npm run build
+TELEGRAPH_INTERNAL_TOKEN=<shared secret> \
+TELEGRAPH_DAILY_USD=0.03 \
+node dist/server.js
 ```
 
-### 5. Deploy to Google Cloud
+The payer key is read from `TELEGRAPH_EVM_PRIVATE_KEY`, or from a gitignored
+`gateway/.env.local`. It must never reach the frontend or a commit.
 
-Create the Firestore database, the Pub/Sub topic, its authenticated push subscription to
-`/internal/events/pubsub`, and a Cloud Scheduler job hitting `/internal/monitoring/tick`
-every five minutes. `infra/bootstrap-gcp.sh` provisions these. Store provider credentials
-in Secret Manager under the names referenced by `cloudbuild.yaml`.
+Point the API at it with `TELEGRAPH_GATEWAY_URL` and the same
+`TELEGRAPH_INTERNAL_TOKEN`.
+
+### 4. Run the web app
 
 ```bash
-# API
-gcloud builds submit --config cloudbuild.yaml   --substitutions COMMIT_SHA=$(git rev-parse HEAD)
-
-# Web app. Substitutions are comma-separated, and the Firebase values are compiled
-# into the bundle at build time rather than read at runtime.
-gcloud builds submit --config cloudbuild.frontend.yaml   --substitutions _API_URL=https://YOUR-API-URL,_FIREBASE_API_KEY=YOUR_KEY,_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT.firebaseapp.com,_FIREBASE_PROJECT_ID=YOUR_PROJECT,_FIREBASE_APP_ID=YOUR_APP_ID
+npm install
+npm run dev
 ```
 
-Add the deployed web app domain to Firebase Authentication's authorized domains, or
-sign-in will be rejected in the browser.
+### 5. Run the tests
+
+```bash
+cd backend && python -m pytest tests/ -q
+cd gateway && npm test
+npm test
+```
+
+### 6. Deploy
+
+Three services, each with its own build file. They deploy under the
+`nemesis-telegraph-*` namespace and share nothing with the frozen original deployment —
+separate Firestore database, separate Pub/Sub topic, separate scheduler job, separate
+secrets.
+
+```bash
+# Telegraph payment gateway (deploys with no unauthenticated access)
+gcloud builds submit --config cloudbuild.gateway.yaml \
+  --substitutions COMMIT_SHA=$(git rev-parse HEAD)
+
+# Case runtime
+gcloud builds submit --config cloudbuild.telegraph.yaml \
+  --substitutions COMMIT_SHA=$(git rev-parse HEAD)
+
+# Web app
+gcloud builds submit --config cloudbuild.telegraph-frontend.yaml \
+  --substitutions _GIT_SHA=$(git rev-parse HEAD)
+```
+
+Secrets expected in Secret Manager: `nemesis-telegraph-payer-key`,
+`nemesis-telegraph-internal-token`, and the provider credentials referenced by
+`cloudbuild.telegraph.yaml`.
 
 ### Verifying a deployment
 
-`GET /health` returns the running `git_sha`. Comparing it against `git rev-parse HEAD`
-confirms the deployed runtime matches the repository.
+Every service reports the commit it is running:
 
-The landing page is public. Firebase authentication is required only when an investigation is submitted or a persisted case is opened. Alchemy supplies historical candidates, Bitquery supplies realtime movement signals when configured, and Ethereum/Base JSON-RPC independently verifies every piece of evidence admitted to a case.
+```bash
+curl -s https://nemesis-telegraph-api-h7bnd6kzfq-uc.a.run.app/health
+```
+
+The `telegraph` block of that response shows gateway health, payer address, and today's
+spend against the ceiling — without exposing a secret.
+
+---
+
+## Project lineage
+
+NEMESIS existed before this extension. It was already an autonomous incident-response
+system: wallet-first discovery, deterministic verification, multi-hop tracing, dormant
+branch monitoring and automatic resume.
+
+This repository continues that work from frozen commit
+[`d51a672`](https://github.com/jenzylove/nemesis/commit/d51a672ae631170609bd3c1f867cb8f5ef10375c)
+for Telegraph Hackathon Track 3. What Telegraph changed is not a feature bolted onto the
+side: external intelligence became an autonomous, paid, verifiable part of every evolving
+investigation, bought only when the chain evidence justifies the question and validated
+before it is allowed to count.
+
+The original [`jenzylove/nemesis`](https://github.com/jenzylove/nemesis) repository and
+its production deployment are untouched and still running. Their build files are not
+carried here, so nothing in this repository can accidentally deploy over them.
