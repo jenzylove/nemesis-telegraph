@@ -52,8 +52,9 @@ substitutions:
   _TELEGRAPH_MAX_AMOUNT_ATOMIC: "10000"
   _PER_CALL_USD: "0.01"
   _PER_CASE_EVENT_USD: "0.03"
-  # Deliberately small. Raise only with an explicit decision to spend more.
-  _DAILY_USD: "0.03"
+  # Zero is a kill switch: every quote exceeds it, so nothing can be paid.
+  # Raise this only as an explicit decision to spend.
+  _DAILY_USD: "0"
   _BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
 options:
   logging: CLOUD_LOGGING_ONLY

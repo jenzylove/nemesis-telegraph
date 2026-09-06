@@ -147,3 +147,8 @@ test("fallback candidate ignores inactive miners", async () => {
   );
   assert.equal(await registry.fallbackCandidate("ONCHAIN_TX_LOOKUP", null), null);
 });
+
+test("a zero daily ceiling refuses every call, which is the kill switch", () => {
+  const ledger = new SpendLedger({ perCallUsd: 0.01, perCaseEventUsd: 0.03, dailyUsd: 0 });
+  assert.throws(() => ledger.authorize("case:trigger", 0.01), /Daily spend/);
+});

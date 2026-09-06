@@ -1,0 +1,12 @@
+Creating temporary archive of 147 file(s) totalling 1.4 MiB before compression.
+Uploading tarball of [.] to [gs://nemesis-506114_cloudbuild/source/1788669353.298999-fe2a2b891f6e410cb4231445e9a4458a.tgz]
+Created [https://cloudbuild.googleapis.com/v1/projects/nemesis-506114/locations/global/builds/a195138a-4672-4471-bbc1-4d23959948ee].
+Logs are available at [ https://console.cloud.google.com/cloud-build/builds/a195138a-4672-4471-bbc1-4d23959948ee?project=336543907032 ].
+
+gcloud builds submit only displays logs from Cloud Storage. To view logs from Cloud Logging, run:
+gcloud beta builds submit
+
+Waiting for build to complete. Polling interval: 1 second(s).
+ID                                    CREATE_TIME                DURATION  SOURCE                                                                                        IMAGES                                                                                                STATUS
+a195138a-4672-4471-bbc1-4d23959948ee  2026-09-06T04:36:00+00:00  7M5S      gs://nemesis-506114_cloudbuild/source/1788669353.298999-fe2a2b891f6e410cb4231445e9a4458a.tgz  us-central1-docker.pkg.dev/nemesis-506114/nemesis/telegraph-web:a195138a-4672-4471-bbc1-4d23959948ee  SUCCESS
+WEB_EXIT=0

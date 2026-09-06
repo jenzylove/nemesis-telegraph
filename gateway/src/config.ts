@@ -58,6 +58,8 @@ export function loadConfig(): GatewayConfig {
     perCallUsd: num("TELEGRAPH_PER_CALL_USD", 0.01),
     perCaseEventUsd: num("TELEGRAPH_PER_CASE_EVENT_USD", 0.03),
     dailyUsd: num("TELEGRAPH_DAILY_USD", 1.0),
+    // A daily ceiling of zero is a deliberate kill switch: every quote exceeds
+    // it, so no call can be paid until someone raises it on purpose.
     // Settlement, not inference, dominates the paid round trip. The first
     // settled call took 8.9 s end to end against the miner's 1.0 s.
     requestTimeoutMs: num("TELEGRAPH_REQUEST_TIMEOUT_MS", 45_000),
