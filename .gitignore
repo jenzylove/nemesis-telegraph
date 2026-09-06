@@ -62,5 +62,6 @@ ev.json
 # Local runtime scratch
 .sites-runtime/
 
-# Local build transcripts
+# Local build and deploy transcripts
 *-build*.log
+d-*.log
