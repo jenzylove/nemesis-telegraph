@@ -45,3 +45,20 @@
 
 /* A published case is read-only, and says so where the download would be. */
 .publicNote{font-size:11px;color:#8995a8;line-height:1.5;margin-top:6px}
+
+/* Judge-facing evidence hierarchy: green is chain truth, amber is paid
+   external intelligence, and blue is agent interpretation. */
+.judgeBrief{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);margin:18px 0;border:1px solid #28302d;background:linear-gradient(90deg,rgba(201,255,61,.035),transparent 42%)}
+.judgeBrief>div{padding:17px 18px;border-right:1px solid #28302d;min-width:0}.judgeBrief>div:last-child{border-right:0}
+.judgeBrief span{display:block;font:8px monospace;letter-spacing:.16em;color:var(--acid);margin-bottom:9px}.judgeBrief b{display:block;font-size:13px;line-height:1.35}.judgeBrief p{font-size:11px;line-height:1.55;color:#84908b;margin:7px 0 0}
+.chainPlane{border-top:2px solid var(--acid);background:linear-gradient(180deg,rgba(201,255,61,.028),transparent 90px)}
+.agentPlane{border-top:2px solid #70a7ff;background:linear-gradient(180deg,rgba(112,167,255,.035),transparent 90px)}
+.agentPlane .panelHead>div small{color:#70a7ff}
+.lifecyclePanel{grid-column:1/-1}.lifecycleRail{display:grid;grid-template-columns:repeat(5,1fr);margin:0 0 18px;border:1px solid #28302d;background:#0a0d0d}
+.lifecycleRail>div{position:relative;min-height:92px;padding:15px 12px;border-right:1px solid #28302d}.lifecycleRail>div:last-child{border-right:0}
+.lifecycleRail i{display:grid;width:22px;height:22px;place-items:center;border:1px solid #39423f;border-radius:50%;font:9px monospace;color:#64706b;font-style:normal;margin-bottom:10px}
+.lifecycleRail b,.lifecycleRail span{display:block}.lifecycleRail b{font-size:11px}.lifecycleRail span{color:#69746f;font-size:9px;margin-top:5px}.lifecycleRail .done.chain i{color:var(--acid);border-color:var(--acid)}.lifecycleRail .done.telegraph i{color:var(--amber);border-color:var(--amber)}.lifecycleRail .done.watch i{color:#70a7ff;border-color:#70a7ff}.lifecycleRail .pending{opacity:.46}
+.timeline .eventTelegraph>i{background:var(--amber);box-shadow:0 0 8px rgba(217,169,75,.45)}.timeline .eventTelegraph p span{color:var(--amber)}
+.timeline .eventMovement>i{background:#70a7ff}.timeline .eventMovement p span{color:#8ab6fa}
+@media(max-width:1100px){.judgeBrief{grid-template-columns:1fr 1fr}.judgeBrief>div:nth-child(2){border-right:0}.judgeBrief>div:nth-child(-n+2){border-bottom:1px solid #28302d}}
+@media(max-width:720px){.judgeBrief{grid-template-columns:1fr}.judgeBrief>div{border-right:0;border-bottom:1px solid #28302d!important}.judgeBrief>div:last-child{border-bottom:0!important}.lifecycleRail{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}.lifecycleRail>div{min-width:150px;scroll-snap-align:start}.lifecyclePanel{min-width:0}}

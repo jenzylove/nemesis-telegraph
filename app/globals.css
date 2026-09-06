@@ -59,13 +59,15 @@
 
 /* Telegraph is a separate evidence plane and is styled to look like one: an
    amber-keyed external voice, never the acid green used for verified facts. */
-.telegraphPanel{grid-column:1/-1}
-.tgBoundary{color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 16px;border-left:2px solid var(--amber);padding-left:12px}
+.telegraphPanel{grid-column:1/-1;border-top:2px solid var(--amber);background:linear-gradient(180deg,rgba(217,169,75,.035),transparent 110px)}
+.tgBoundary{display:flex;gap:14px;align-items:flex-start;color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 16px;border:1px solid rgba(217,169,75,.28);background:rgba(217,169,75,.04);padding:12px 14px}.tgBoundary b{white-space:nowrap;color:var(--amber);font:9px monospace;letter-spacing:.14em}.tgBoundary span{max-width:830px}
 .tgSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
 .tgSummary div{border:1px solid var(--line);padding:12px 13px;background:rgba(255,255,255,.012)}
 .tgSummary small{display:block;font:9px monospace;letter-spacing:.16em;color:var(--muted)}
 .tgSummary strong{display:block;font-size:22px;margin:6px 0 3px;color:var(--amber)}
 .tgSummary span{font-size:11px;color:var(--muted)}
+.tgSummary .success{border-color:rgba(201,255,61,.28)}.tgSummary .success strong{color:var(--acid)}.tgSummary .guarded strong{color:#8c9692}
+.tgFilters{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}.tgFilters button{background:transparent;border:1px solid var(--line);color:#7d8884;padding:8px 11px;font:9px monospace;letter-spacing:.08em;cursor:pointer}.tgFilters button b{margin-left:7px}.tgFilters button.active{color:#10130d;background:var(--amber);border-color:var(--amber)}
 .tgList{display:flex;flex-direction:column;gap:14px}
 .tgReceipt{border:1px solid var(--line);border-left:2px solid var(--amber);padding:15px 16px;background:rgba(255,255,255,.012)}
 .tgReceipt.failed{border-left-color:#4a5250;opacity:.85}
@@ -73,6 +75,7 @@
 .tgReceipt header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px}
 .tgReceipt header b{display:block;font-size:14px;letter-spacing:.02em}
 .tgReceipt header small{display:block;color:var(--muted);font:10px monospace;letter-spacing:.08em;margin-top:4px}
+.tgResultSummary{margin:0 0 13px;max-width:920px;color:#c8cfcc;font-size:12px;line-height:1.6;white-space:pre-line}
 .tgVerdict{font:10px monospace;letter-spacing:.12em;padding:5px 9px;border:1px solid var(--line);white-space:nowrap;text-transform:uppercase}
 .tgVerdict.risk{color:var(--red);border-color:var(--red)}
 .tgVerdict.low,.tgVerdict.info{color:var(--amber);border-color:var(--amber)}
@@ -87,10 +90,11 @@
 .tgClash i{font-style:normal;color:var(--amber)}
 .tgClash small{color:var(--muted);font-size:11px;margin-top:3px}
 .tgReceipt footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:13px;padding-top:12px;border-top:1px solid var(--line)}
-.tgProof{display:flex;flex-wrap:wrap;gap:6px 16px;font:10px monospace;letter-spacing:.09em;color:var(--acid)}
+.tgProof{display:flex;flex-wrap:wrap;gap:6px 16px;font:10px monospace;letter-spacing:.09em;color:var(--acid)}.tgProof>b{font-size:9px;color:var(--acid)}
 .tgProof a{color:var(--acid);text-decoration:none;border-bottom:1px solid rgba(201,255,61,.35)}
 .tgProof span{color:var(--muted)}
 .tgProof.none{color:var(--muted)}
 .tgToggle{background:none;border:1px solid var(--line);color:var(--text);font:10px monospace;letter-spacing:.12em;padding:7px 11px;cursor:pointer;text-transform:uppercase}
 .tgToggle:hover{border-color:var(--amber);color:var(--amber)}
 .tgRaw{margin:12px 0 0;padding:12px;background:#070909;border:1px solid var(--line);overflow-x:auto;font:11px monospace;color:#9fb0a8;max-height:340px}
+@media(max-width:620px){.tgBoundary{display:block}.tgBoundary b{display:block;margin-bottom:6px}.tgSummary{grid-template-columns:1fr 1fr}.tgReceipt{padding:13px}.tgReceipt header{display:block}.tgVerdict{display:inline-block;margin-top:9px}.tgMeta{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tgFilters{display:grid;grid-template-columns:1fr}.tgFilters button{text-align:left}}

@@ -146,7 +146,8 @@ export default function AuthGate(){
   const refreshInFlight=useRef(false);
 
   const [returning,setReturning]=useState(false);
-  useEffect(()=>{setReturning(hasReturned());},[]);
+  const [publicDemo,setPublicDemo]=useState(false);
+  useEffect(()=>{setReturning(hasReturned());setPublicDemo(new URLSearchParams(window.location.search).has("case"));},[]);
 
   // One control owns this corner. A first-time visitor is offered the thing they
   // came for; once someone has signed in on this device the same slot becomes
@@ -298,7 +299,8 @@ export default function AuthGate(){
   const actionable=reopened?.trace.branches.filter(branch=>branch.status==="ACTIONABLE").length||0;
   return <>
     <div className="authDock" role="navigation" aria-label="Account">
-      <button type="button" className="authPrimary" onClick={dockAction}>{label}</button>
+      <button type="button" className={`authPrimary${publicDemo?" publicDemoHidden":""}`} onClick={dockAction} tabIndex={publicDemo?-1:undefined} aria-hidden={publicDemo}>{label}</button>
+      {publicDemo&&<div className="publicDemoBadge"><i/>PUBLIC DEMO <span>READ ONLY · NO SIGN-IN REQUIRED</span></div>}
     </div>
 
     {modal&&<div className="authBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)dismiss();}}>
@@ -307,7 +309,7 @@ export default function AuthGate(){
         <span className="authEyebrow">NEMESIS ACCOUNT</span>
         <h2>{pending?"Continue your investigation":"Welcome back"}</h2>
         <p>{pending?"Sign in to begin tracing this wallet and keep the case available while NEMESIS monitors fund movement.":"Sign in to open your saved investigations and continue monitoring from any device."}</p>
-        {!configured&&<div className="authNotice">Sign in is temporarily unavailable. You can still start an investigation once it is back.</div>}
+        {!configured&&<div className="authNotice"><b>Public demo mode</b> Sign-in is temporarily unavailable. Published case pages remain fully available without an account.</div>}
         <button className="authGoogle" type="button" onClick={google} disabled={busy||!configured}>Continue with Google</button>
         <div className="authDivider"><span>or</span></div>
         <div className="authTabs"><button className={mode==="signin"?"active":""} onClick={()=>{setMode("signin");setError("");}}>Sign in</button><button className={mode==="signup"?"active":""} onClick={()=>{setMode("signup");setError("");}}>Create account</button></div>

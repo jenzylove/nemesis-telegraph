@@ -172,3 +172,56 @@ async def test_the_package_states_the_boundary_even_with_telegraph_off(monkeypat
     assert plane["enabled"] is False
     assert plane["receipts"] == []
     assert plane["boundary"]
+
+
+@pytest.mark.asyncio
+async def test_payment_proof_exposes_everything_a_reader_can_check(wired):
+    full = receipt("NMS-PRIVATE", "TG-PROOF-FULL")
+    full.payment_network = "eip155:84532"
+    full.payment_asset = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+    full.payment_payee = "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8"
+    full.payment_scheme = "exact"
+    full.quoted_amount_atomic = "10000"
+    full.quoted_cost_usdc = "0.010000"
+    full.payment = {
+        "settled": True,
+        "settlement_transaction": "0x" + "cd" * 32,
+        "payer": "0x8827d3AF20eFe02582aEA67a5E704C04BAd52324",
+        "network": "eip155:84532",
+    }
+    await wired.save(full)
+
+    proof = (await main.get_case_telegraph("NMS-PRIVATE", OWNER))["receipts"][0]["payment_proof"]
+    assert proof["network"] == "eip155:84532"
+    assert proof["asset"] == "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+    assert proof["payee"].startswith("0x5a2324")
+    assert proof["payer"].startswith("0x8827d3")
+    assert proof["scheme"] == "exact"
+    assert proof["quoted_amount_atomic"] == "10000"
+    assert proof["reported_cost_usd"] == 0.01
+    assert proof["settled"] is True
+    assert proof["settlement_transaction"].startswith("0x")
+    assert proof["settlement_explorer_url"].startswith("https://sepolia.basescan.org/tx/0x")
+    assert proof["signal_hash"].startswith("0x")
+
+
+@pytest.mark.asyncio
+async def test_absent_payment_fields_stay_null_rather_than_being_invented(wired):
+    bare = receipt("NMS-PRIVATE", "TG-BARE-PROOF", signal=False)
+    bare.payment = None
+    await wired.save(bare)
+    proof = (await main.get_case_telegraph("NMS-PRIVATE", OWNER))["receipts"][0]["payment_proof"]
+    for field in ("network", "asset", "payee", "scheme", "payer", "settlement_transaction", "signal_hash", "verification"):
+        assert proof[field] is None, field
+    assert proof["settlement_explorer_url"] is None
+
+
+@pytest.mark.asyncio
+async def test_no_explorer_link_is_offered_for_an_unrecognised_network(wired):
+    other = receipt("NMS-PRIVATE", "TG-OTHER-NET")
+    other.payment_network = "eip155:1"
+    other.payment = {"settled": True, "settlement_transaction": "0x" + "ab" * 32}
+    await wired.save(other)
+    proof = (await main.get_case_telegraph("NMS-PRIVATE", OWNER))["receipts"][0]["payment_proof"]
+    assert proof["settlement_transaction"].startswith("0x")
+    assert proof["settlement_explorer_url"] is None

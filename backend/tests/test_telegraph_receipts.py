@@ -12,6 +12,7 @@ from app.telegraph import (
     receipt_id,
     should_enrich,
     summarize,
+    extract_summary,
 )
 
 CASE = "NMS-260826-915B337C"
@@ -253,3 +254,58 @@ def test_a_non_committal_lookup_is_inconclusive_not_an_all_clear():
 def test_an_unknown_intent_is_treated_as_a_risk_question():
     """The cautious default: if we cannot tell, do not imply safety."""
     assert summarize({"source": "x"})["label"] == "NO_EXTERNAL_SIGNAL"
+
+
+def test_a_summary_is_taken_from_what_the_miner_wrote():
+    # The real SarzOps shape: prose under "explanation".
+    text = "I do not have any observable fraud-risk signals for this address."
+    assert extract_summary({"explanation": text}) == text
+    assert extract_summary({"signal": "Confirmed transfer of 22.5 ETH."}) == "Confirmed transfer of 22.5 ETH."
+
+
+def test_no_summary_is_composed_when_the_miner_wrote_none():
+    assert extract_summary({"risk_score": 0.4, "verdict": "elevated_risk"}) is None
+    assert extract_summary({}) is None
+    assert extract_summary(None) is None
+
+
+def test_a_long_summary_is_truncated_rather_than_dropped():
+    long_text = "word " * 200
+    summary = extract_summary({"answer": long_text})
+    assert len(summary) <= 400
+    assert summary.endswith("...")
+
+
+def test_summary_whitespace_is_normalised_for_display():
+    assert extract_summary({"signal": "line one\n  line two\t"}) == "line one line two"
+
+
+@pytest.mark.asyncio
+async def test_challenge_terms_are_persisted_on_the_receipt():
+    settled = {
+        **SETTLED,
+        "challenge": {
+            "scheme": "exact",
+            "network": "eip155:84532",
+            "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+            "amount_atomic": "10000",
+            "amount_usdc": "0.010000",
+            "pay_to": "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8",
+            "max_timeout_seconds": 60,
+        },
+    }
+    service = enricher(StubGateway([settled]))
+    r = await service.enrich(CASE, "ONCHAIN_TX_LOOKUP", "transaction", TX, "ethereum", "VERIFIED_INCIDENT")
+    assert r.payment_network == "eip155:84532"
+    assert r.payment_asset == "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+    assert r.payment_payee == "0x5a2324aA18613FAD4e44bDF0d6c73Ec1f6D87ff8"
+    assert r.payment_scheme == "exact"
+    assert r.quoted_amount_atomic == "10000"
+
+
+@pytest.mark.asyncio
+async def test_a_response_without_challenge_terms_leaves_them_null():
+    service = enricher()
+    r = await service.enrich(CASE, "ONCHAIN_TX_LOOKUP", "transaction", TX, "ethereum", "VERIFIED_INCIDENT")
+    assert r.payment_network is None
+    assert r.payment_asset is None
