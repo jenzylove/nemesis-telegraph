@@ -39,12 +39,12 @@ export default function ProvisionalIncident({
   return <section className="panel provisional">
     <div className="panelHead"><div><span>LIKELY INCIDENT IDENTIFIED</span><small> PROVISIONAL · NOT A CONFIDENT SELECTION</small></div><small>{Math.round(confidence*100)}% SELECTION CONFIDENCE</small></div>
     <h3>NEMESIS is continuing with the strongest verified candidate.</h3>
-    <p>{reason||"Several outflows from this wallet scored closely, so the leading one was chosen provisionally."}</p>
     <div className="provisionalFacts">
-      <span>The transaction itself is <b>RPC verified</b></span>
-      <span>It <b>moved value out of this wallet</b></span>
-      <span>Which outflow was the theft is <b>not proven</b></span>
+      <span>The transaction is <b>RPC verified</b></span>
+      <span>It <b>moved funds from this wallet</b></span>
+      <span>That it was the theft is <b>still provisional</b></span>
     </div>
+    {reason&&<small className="caution">{reason}</small>}
     {others.length>0&&<>
       <button className="tgToggle" onClick={()=>setOpen(!open)} aria-expanded={open}>
         {open?"Hide":"Show"} other plausible transactions ({others.length})

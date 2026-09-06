@@ -80,7 +80,7 @@ test("the case screen renders a provisional incident instead of blocking", () =>
 test("a provisional pick is labelled likely, never proven", () => {
   assert.match(provisional, /LIKELY INCIDENT IDENTIFIED/);
   assert.match(provisional, /NOT A CONFIDENT SELECTION/);
-  assert.match(provisional, /is <b>not proven<\/b>/);
+  assert.match(provisional, /still provisional<\/b>/);
 });
 
 test("selection confidence is shown honestly rather than hidden", () => {
@@ -96,5 +96,60 @@ test("alternatives stay reachable as an override, behind a disclosure", () => {
 
 test("the provisional panel still states the transaction itself is verified", () => {
   assert.match(provisional, /RPC verified/);
-  assert.match(provisional, /moved value out of this wallet/);
+  assert.match(provisional, /moved funds from this wallet/);
+});
+
+// --- judge-facing overview ---
+const overview = readFileSync(new URL("../app/case-overview.tsx", import.meta.url), "utf8");
+const panel = readFileSync(new URL("../app/telegraph-panel.tsx", import.meta.url), "utf8");
+
+test("overview routes to each section instead of repeating it", () => {
+  for (const id of ["evidence", "graph", "intelligence", "timeline"]) {
+    assert.ok(overview.includes(`go("${id}")`) || overview.includes(`id:"${id}"`), `no route to ${id}`);
+  }
+  assert.match(overview, /ONCHAIN EVIDENCE/);
+  assert.match(overview, /FUND TRACE/);
+  assert.match(overview, /TELEGRAPH INTELLIGENCE/);
+  assert.match(overview, /AGENT ASSESSMENT/);
+});
+
+test("overview offers a direct route into Telegraph and the timeline", () => {
+  assert.match(overview, /View Telegraph intelligence →/);
+  assert.match(overview, /View full timeline →/);
+});
+
+test("the real case overview previews rather than repeating the sections", () => {
+  // The synthetic demo screen keeps its own simpler layout; this is about the
+  // real investigation, where Overview must route instead of duplicating.
+  assert.match(page, /\{section==="overview"&&<CaseOverview/);
+  assert.match(page, /\{section==="intelligence"&&<TelegraphPanel/);
+  assert.match(page, /\{section==="evidence"&&<section className="panel escalation chainPlane">/);
+  assert.doesNotMatch(page, /\(section==="overview"\|\|section==="intelligence"\)/);
+});
+
+test("Telegraph is described as a product capability, not integration work", () => {
+  assert.doesNotMatch(overview, /WHAT TELEGRAPH ADDED/);
+  assert.doesNotMatch(panel, /WHAT TELEGRAPH ADDED/);
+  assert.match(panel, /How Telegraph strengthened this investigation/);
+  assert.match(panel, /purchased automatically/);
+});
+
+test("a paid receipt states the x402 loop in one line", () => {
+  assert.match(panel, /Paid <b>\{\(r\.reported_cost_usd\?\?0\.01\)\.toFixed\(2\)\} USDC<\/b> via x402/);
+  assert.match(panel, /Base Sepolia testnet/);
+  assert.match(panel, /Payment settled/);
+  assert.match(panel, /View payment proof/);
+  assert.match(panel, /Open settlement on block explorer/);
+});
+
+test("skipped calls read as product language, with the policy string demoted", () => {
+  assert.match(panel, /MINER CALL SKIPPED/);
+  assert.match(panel, /Case intelligence budget reached/);
+  assert.match(panel, /Technical details/);
+  assert.match(panel, /\["Policy reason"/);
+});
+
+test("the landing CTAs do different things", () => {
+  assert.match(page, /Explore the system/);
+  assert.match(page, /getElementById\("system"\)\?\.scrollIntoView/);
 });

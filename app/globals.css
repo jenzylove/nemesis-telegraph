@@ -109,3 +109,74 @@
 .provisionalFacts b{color:var(--text)}
 .provisionalAlternatives{margin-top:14px}
 .provisionalAlternatives button{margin-top:8px}
+
+/* --- Overview: an executive summary that routes, never a second copy of the case --- */
+.execSummary{grid-column:1/-1;border:1px solid var(--line);background:rgba(255,255,255,.014);padding:22px 24px;margin-bottom:18px}
+.execHeadline{display:flex;justify-content:space-between;align-items:flex-start;gap:26px;flex-wrap:wrap}
+.execKicker{font:10px monospace;letter-spacing:.2em;color:var(--acid)}
+.execHeadline h3{font-size:21px;letter-spacing:-.02em;margin:10px 0 10px;max-width:46ch;line-height:1.25}
+.execHeadline p{color:#a4ada9;font-size:13.5px;line-height:1.65;max-width:62ch;margin:0}
+.execState{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.execBadge{font:10px monospace;letter-spacing:.14em;padding:7px 11px;border:1px solid var(--line);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.execBadge i{width:6px;height:6px;border-radius:50%;background:var(--acid);box-shadow:0 0 10px var(--acid)}
+.execBadge.watch i{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.execBadge.provisionalBadge{color:var(--amber);border-color:var(--amber)}
+.execState small{color:var(--muted);font-size:11px}
+.execFacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:20px}
+.execFacts div{border:1px solid var(--line);padding:12px 13px}
+.execFacts small{display:block;font:9px monospace;letter-spacing:.16em;color:var(--muted)}
+.execFacts b{display:block;font-size:19px;margin:6px 0 3px}
+.execFacts span{font-size:11px;color:var(--muted)}
+.execLifecycle{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.execLifecycle>div{display:flex;align-items:center;gap:9px;font-size:12px}
+.execLifecycle>div+div::before{content:"→";color:#3a4340;margin-right:5px}
+.execLifecycle i{width:20px;height:20px;border:1px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:10px;color:var(--muted);flex:0 0 auto}
+.execLifecycle .done i{border-color:var(--acid);color:var(--acid)}
+.execLifecycle b{font-weight:600}
+.execLifecycle .pending b{color:var(--muted)}
+.execLifecycle span{display:none}
+.execLink{margin-left:auto;background:none;border:0;color:var(--acid);font:11px monospace;letter-spacing:.1em;cursor:pointer;padding:6px 0}
+.execTelegraph{display:flex;justify-content:space-between;align-items:center;gap:22px;flex-wrap:wrap;margin-top:20px;padding:16px 18px;border:1px solid var(--amber);background:rgba(217,169,75,.045)}
+.execTelegraph span{font:10px monospace;letter-spacing:.16em;color:var(--amber)}
+.execTelegraph b{display:block;margin:8px 0 6px;font-size:15px}
+.execTelegraph p{margin:0;color:#a4ada9;font-size:12.5px;line-height:1.6;max-width:64ch}
+.execTelegraph .primary{margin:0;white-space:nowrap}
+
+.navCards{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin-bottom:6px}
+.navCard{position:relative;text-align:left;background:rgba(255,255,255,.012);border:1px solid var(--line);padding:18px 17px;cursor:pointer;color:var(--text);transition:border-color .15s,transform .15s}
+.navCard:hover{border-color:var(--acid);transform:translateY(-2px)}
+.navGlyph{display:block;font-size:17px;color:var(--acid);margin-bottom:12px}
+.navCard b{display:block;font:11px monospace;letter-spacing:.14em}
+.navCard small{display:block;color:var(--muted);font-size:12px;margin:7px 0 12px;line-height:1.5}
+.navCard em{font-style:normal;font-size:13px;color:var(--text)}
+.navGo{position:absolute;right:15px;bottom:15px;color:var(--muted)}
+.navCard:hover .navGo{color:var(--acid)}
+
+/* --- Telegraph receipt: the x402 loop legible at a glance --- */
+.tgPaidLine{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0 4px;font-size:12.5px;color:var(--muted)}
+.tgPaidLine b{color:var(--text)}
+.tgPaidLine .settled{color:var(--acid)}
+.tgResultSummary{margin:12px 0 0;font-size:13.5px;line-height:1.6;color:var(--text)}
+.tgSkipped{margin:10px 0 0;font-size:13px;line-height:1.6;color:var(--muted)}
+.tgReceipt.skipped{border-left-color:#3a4340;opacity:.9}
+.tgActions{display:flex;flex-wrap:wrap;gap:8px}
+.tgToggle.primaryToggle{border-color:var(--acid);color:var(--acid)}
+.tgProofBox{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px;border:1px solid var(--acid);background:rgba(201,255,61,.04)}
+.tgProofBox small{display:block;font:9px monospace;letter-spacing:.14em;color:var(--muted)}
+.tgProofBox b{font-size:13px;word-break:break-all}
+.tgProofBox a{grid-column:1/-1;color:var(--acid);font:11px monospace;letter-spacing:.08em;text-decoration:none;border-top:1px solid rgba(201,255,61,.25);padding-top:11px}
+.tgTechnical{margin:12px 0 0;padding:13px;border:1px solid var(--line);background:#070909;display:grid;gap:7px}
+.tgTechnical div{display:grid;grid-template-columns:150px 1fr;gap:12px;font-size:11.5px}
+.tgTechnical dt{color:var(--muted);font-family:monospace;letter-spacing:.05em}
+.tgTechnical dd{margin:0;word-break:break-all;color:#9fb0a8;font-family:monospace}
+.tgFilters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tgFilters button{background:none;border:1px solid var(--line);color:var(--muted);font:10px monospace;letter-spacing:.1em;padding:8px 12px;cursor:pointer}
+.tgFilters button.on{border-color:var(--acid);color:var(--acid)}
+
+@media(max-width:760px){
+  .execHeadline{flex-direction:column}
+  .execState{align-items:flex-start}
+  .execTelegraph{flex-direction:column;align-items:flex-start}
+  .execLink{margin-left:0}
+  .tgTechnical div{grid-template-columns:1fr;gap:2px}
+}
