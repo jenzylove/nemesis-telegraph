@@ -412,12 +412,36 @@ async def get_public_trace(case_id: str):
 # Telegraph intelligence is served as its own evidence plane. It is deliberately
 # a separate payload from the trace so the frontend cannot accidentally render
 # an external opinion as a deterministic fact.
+EXPLORER_BY_NETWORK = {"eip155:84532": "https://sepolia.basescan.org/tx/"}
+
+
 def telegraph_view(receipt) -> dict:
     payload = receipt.model_dump(mode="json")
     payload["evidence_plane"] = "telegraph_external_intelligence"
     payload["authoritative_for_chain_facts"] = False
+    payment = receipt.payment or {}
+    settlement = payment.get("settlement_transaction")
     # Proof is shown only where Telegraph actually returned it.
-    payload["has_proof"] = bool(receipt.signal_hash or (receipt.payment or {}).get("settlement_transaction"))
+    payload["has_proof"] = bool(receipt.signal_hash or settlement)
+    explorer = EXPLORER_BY_NETWORK.get(receipt.payment_network or payment.get("network") or "")
+    # One place for everything a reader needs to check the payment themselves.
+    # Every entry is a value Telegraph or its signed challenge actually
+    # returned; absent values stay null rather than being filled in.
+    payload["payment_proof"] = {
+        "network": receipt.payment_network or payment.get("network"),
+        "asset": receipt.payment_asset,
+        "payee": receipt.payment_payee,
+        "scheme": receipt.payment_scheme,
+        "payer": payment.get("payer"),
+        "quoted_amount_atomic": receipt.quoted_amount_atomic,
+        "quoted_cost_usdc": receipt.quoted_cost_usdc,
+        "reported_cost_usd": receipt.reported_cost_usd,
+        "settled": payment.get("settled"),
+        "settlement_transaction": settlement,
+        "settlement_explorer_url": (explorer + settlement) if (explorer and settlement) else None,
+        "signal_hash": receipt.signal_hash,
+        "verification": receipt.verification,
+    }
     return payload
 
 

@@ -107,6 +107,11 @@ function authMessage(error:unknown,fallback:string){
     case "auth/operation-not-allowed":
     case "auth/configuration-not-found":
       return "Sign in is temporarily unavailable. Please try again shortly.";
+    case "auth/unauthorized-domain":
+      // This deployment is not on the provider's allowed origin list. Email
+      // sign-in is unaffected, so say which door is open rather than leaving
+      // the person guessing.
+      return "Google sign-in is not enabled for this deployment. Use your email and password instead.";
     default:
       break;
   }

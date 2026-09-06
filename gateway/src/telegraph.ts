@@ -111,6 +111,7 @@ export class TelegraphClient {
       miner_name: null,
       result: null,
       quoted_cost_usdc: null,
+      challenge: null,
       reported_cost_usd: null,
       reported_duration_ms: null,
       duration_ms: Math.round(performance.now() - startedAt),
@@ -174,7 +175,7 @@ export class TelegraphClient {
       this.ledger.authorize(caseEventKey, quotedUsd);
     } catch (error) {
       if (error instanceof SpendLimitExceeded) {
-        return { ...fail("SPEND_LIMIT_EXCEEDED", error.message), quoted_cost_usdc: offer.amount_usdc };
+        return { ...fail("SPEND_LIMIT_EXCEEDED", error.message), quoted_cost_usdc: offer.amount_usdc, challenge: offer };
       }
       throw error;
     }
@@ -187,7 +188,8 @@ export class TelegraphClient {
       if (spentToday === null) {
         return {
           ...fail("SPEND_LEDGER_UNAVAILABLE", "Daily spend could not be read, so payment is refused"),
-          quoted_cost_usdc: offer.amount_usdc
+          quoted_cost_usdc: offer.amount_usdc,
+          challenge: offer
         };
       }
       if (spentToday + quotedUsd > this.config.dailyUsd) {
@@ -196,7 +198,8 @@ export class TelegraphClient {
             "SPEND_LIMIT_EXCEEDED",
             "Daily spend would reach " + (spentToday + quotedUsd).toFixed(6) + ", over the " + this.config.dailyUsd + " ceiling"
           ),
-          quoted_cost_usdc: offer.amount_usdc
+          quoted_cost_usdc: offer.amount_usdc,
+          challenge: offer
         };
       }
     }
@@ -225,10 +228,10 @@ export class TelegraphClient {
     } catch (error) {
       this.recentFailures += 1;
       if (error instanceof ChallengeRejected) {
-        return { ...fail("CHALLENGE_REJECTED", error.message), quoted_cost_usdc: offer.amount_usdc };
+        return { ...fail("CHALLENGE_REJECTED", error.message), quoted_cost_usdc: offer.amount_usdc, challenge: offer };
       }
       const message = error instanceof Error ? error.message : String(error);
-      return { ...fail("PAYMENT_FAILED", message), quoted_cost_usdc: offer.amount_usdc };
+      return { ...fail("PAYMENT_FAILED", message), quoted_cost_usdc: offer.amount_usdc, challenge: offer };
     }
 
     const text = await response.text();
@@ -256,6 +259,7 @@ export class TelegraphClient {
       return {
         ...fail("ROUTER_HTTP_ERROR", "Telegraph returned HTTP " + response.status),
         quoted_cost_usdc: offer.amount_usdc,
+        challenge: offer,
         payment,
         raw_response_hash: hashRaw(parsed)
       };
@@ -274,6 +278,7 @@ export class TelegraphClient {
       ...normalized,
       status: "succeeded",
       quoted_cost_usdc: offer.amount_usdc,
+      challenge: offer,
       duration_ms: Math.round(performance.now() - startedAt),
       payment,
       raw_response_hash: hashRaw(parsed),

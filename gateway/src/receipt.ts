@@ -11,6 +11,18 @@ export type TransportReceipt = {
   miner_name: string | null;
   result: unknown;
   quoted_cost_usdc: string | null;
+  // The terms actually approved on the signed challenge. These are observed
+  // values, not defaults: the asset and network a payment settled in belong on
+  // the receipt as much as the amount does.
+  challenge: {
+    scheme: string | null;
+    network: string | null;
+    asset: string | null;
+    amount_atomic: string | null;
+    amount_usdc: string | null;
+    pay_to: string | null;
+    max_timeout_seconds: number | null;
+  } | null;
   reported_cost_usd: number | null;
   reported_duration_ms: number | null;
   duration_ms: number;

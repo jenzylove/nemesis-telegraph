@@ -71,10 +71,15 @@ substitutions:
   # Set at submit time so the running frontend is traceable to a commit.
   _GIT_SHA: unknown
   _API_URL: https://nemesis-telegraph-api-h7bnd6kzfq-uc.a.run.app
-  _FIREBASE_API_KEY: ""
-  _FIREBASE_AUTH_DOMAIN: ""
-  _FIREBASE_PROJECT_ID: ""
-  _FIREBASE_APP_ID: ""
+  # Firebase web config. These are public client identifiers, not secrets:
+  # they ship in the browser bundle by design and authorize nothing on their
+  # own. Access is enforced by Firebase Auth and by the API verifying every
+  # bearer token server-side. Same project as the original deployment, so
+  # accounts work across both; nothing about that project was modified.
+  _FIREBASE_API_KEY: "AIzaSyBqiEYdG89FjOo4IybroYyZ_y3DD1CkLFw"
+  _FIREBASE_AUTH_DOMAIN: "nemesis-506114.firebaseapp.com"
+  _FIREBASE_PROJECT_ID: "nemesis-506114"
+  _FIREBASE_APP_ID: "1:336543907032:web:3cbad6a15c63980add6bad"
 
 options:
   logging: CLOUD_LOGGING_ONLY

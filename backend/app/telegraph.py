@@ -52,6 +52,8 @@ class TelegraphReceipt(BaseModel):
 
     result: dict | None = None
     label: str | None = None
+    # A short line the miner actually wrote. Extracted, never composed.
+    result_summary: str | None = None
     confidence: float | None = None
     risk_score: float | None = None
     coverage_complete: bool | None = None
@@ -59,6 +61,13 @@ class TelegraphReceipt(BaseModel):
     discrepancy: dict | None = None
 
     quoted_cost_usdc: str | None = None
+    quoted_amount_atomic: str | None = None
+    # Terms from the signed x402 challenge. Observed, never assumed: a receipt
+    # that cannot say which asset on which network paid whom is not proof.
+    payment_network: str | None = None
+    payment_asset: str | None = None
+    payment_payee: str | None = None
+    payment_scheme: str | None = None
     reported_cost_usd: float | None = None
     duration_ms: int | None = None
     reported_duration_ms: int | None = None
@@ -311,6 +320,26 @@ def summarize(result: dict | None, intent: str | None = None) -> dict:
     }
 
 
+# Fields miners have actually used to carry their answer in prose.
+_SUMMARY_KEYS = ("signal", "answer", "explanation", "reasoning", "summary")
+
+
+def extract_summary(result: dict | None) -> str | None:
+    """Returns a line the miner wrote, or nothing.
+
+    This never composes a sentence. If the miner did not provide prose, the UI
+    shows the structured fields instead of an invented description.
+    """
+    if not isinstance(result, dict):
+        return None
+    for key in _SUMMARY_KEYS:
+        value = result.get(key)
+        if isinstance(value, str) and value.strip():
+            text = " ".join(value.split())
+            return text if len(text) <= 400 else text[:397] + "..."
+    return None
+
+
 def detect_discrepancy(result: dict | None, expected: dict) -> dict | None:
     """Compares a miner's transaction claims against RPC-verified facts.
 
@@ -488,10 +517,18 @@ class TelegraphEnricher:
         elif raw_result is not None:
             receipt.result = {"value": raw_result}
         receipt.label = summary["label"]
+        receipt.result_summary = extract_summary(result)
         receipt.confidence = summary["confidence"]
         receipt.risk_score = summary["risk_score"]
         receipt.coverage_complete = summary["coverage_complete"]
         receipt.quoted_cost_usdc = transport.get("quoted_cost_usdc")
+        challenge = transport.get("challenge")
+        if isinstance(challenge, dict):
+            receipt.quoted_amount_atomic = challenge.get("amount_atomic")
+            receipt.payment_network = challenge.get("network")
+            receipt.payment_asset = challenge.get("asset")
+            receipt.payment_payee = challenge.get("pay_to")
+            receipt.payment_scheme = challenge.get("scheme")
         receipt.reported_cost_usd = transport.get("reported_cost_usd")
         receipt.duration_ms = transport.get("duration_ms")
         receipt.reported_duration_ms = transport.get("reported_duration_ms")
