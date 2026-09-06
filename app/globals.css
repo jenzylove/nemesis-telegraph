@@ -193,3 +193,9 @@
 .techDetails[open] summary{margin-bottom:10px}
 .reasonList{margin:0;padding-left:18px;color:#9fb0a8;font-size:12px;line-height:1.7}
 .assessHeadline{font-size:17px;color:var(--text);margin:6px 0 10px;letter-spacing:-.01em}
+
+/* The account dock and the public-demo badge both float over the top-right
+   corner, so the case header must not put anything there. The status chip now
+   sits under the title, where nothing can land on top of it. */
+.caseMain>header{padding-right:0}
+.caseMain>header .status{margin-top:14px;display:inline-flex}
