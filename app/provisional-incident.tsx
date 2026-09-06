@@ -40,7 +40,7 @@ export default function ProvisionalIncident({
     <div className="panelHead"><div><span>LIKELY INCIDENT IDENTIFIED</span><small> PROVISIONAL · NOT A CONFIDENT SELECTION</small></div><small>{Math.round(confidence*100)}% SELECTION CONFIDENCE</small></div>
     <h3>NEMESIS is continuing with the strongest verified candidate.</h3>
     <div className="provisionalFacts">
-      <span>The transaction is <b>RPC verified</b></span>
+      <span>The transaction is <b>verified onchain</b></span>
       <span>It <b>moved funds from this wallet</b></span>
       <span>That it was the theft is <b>still provisional</b></span>
     </div>

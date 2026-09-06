@@ -95,7 +95,7 @@ test("alternatives stay reachable as an override, behind a disclosure", () => {
 });
 
 test("the provisional panel still states the transaction itself is verified", () => {
-  assert.match(provisional, /RPC verified/);
+  assert.match(provisional, /verified onchain/);
   assert.match(provisional, /moved funds from this wallet/);
 });
 
@@ -191,4 +191,11 @@ test("a conflict is described against the chain, not against a protocol name", (
 test("uncertainty about the compromise method reads as a sentence", () => {
   assert.match(page, /Not yet determined/);
   assert.match(page, /not enough verified evidence yet to determine how the wallet was compromised/);
+});
+
+test("no case surface speaks in protocol jargon", () => {
+  for (const file of [overview, panel, provisional]) {
+    assert.doesNotMatch(file, /JSON-RPC/);
+    assert.doesNotMatch(file, /RPC verified/);
+  }
 });

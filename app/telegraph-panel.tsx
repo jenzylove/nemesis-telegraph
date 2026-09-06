@@ -155,7 +155,7 @@ export default function TelegraphPanel({state,loading}:{state:TelegraphState|nul
     <div className="panelHead"><div><span>TELEGRAPH INTELLIGENCE</span><small> EXTERNAL NETWORK · NON-AUTHORITATIVE</small></div><small>{state?.enabled===false?"DISABLED":`${s.accepted??0} ACCEPTED OF ${s.responses_purchased??successful.length} PURCHASED`}</small></div>
     <div className="tgBoundary">
       <b>How Telegraph strengthened this investigation</b>
-      <span>Independent miner intelligence, purchased automatically when a verified case event required external context. Each answer is paid for over x402 and its settlement is preserved. Miner claims support triage; every blockchain fact on this case still comes from NEMESIS JSON-RPC verification.</span>
+      <span>Independent miner intelligence, purchased automatically when a verified case event required external context. Each answer is paid for over x402 and its settlement is preserved. Miner claims support triage; every blockchain fact on this case is still confirmed by NEMESIS directly on the chain.</span>
     </div>
 
     {state?.enabled===false&&<div className="emptyTrace">Telegraph enrichment is not configured for this deployment.</div>}
