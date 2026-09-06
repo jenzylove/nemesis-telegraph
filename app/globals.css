@@ -199,3 +199,4 @@
    sits under the title, where nothing can land on top of it. */
 .caseMain>header{padding-right:0}
 .caseMain>header .status{margin-top:14px;display:inline-flex}
+.tgBoundaryNote{margin:0 0 14px;padding:11px 13px;border-left:2px solid var(--line);color:var(--muted);font-size:12.5px;line-height:1.6}

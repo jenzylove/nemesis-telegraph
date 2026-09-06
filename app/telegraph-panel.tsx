@@ -142,14 +142,16 @@ function Receipt({r}:{r:TelegraphReceipt}){
 
 export default function TelegraphPanel({state,loading}:{state:TelegraphState|null;loading:boolean}){
   const s=state?.summary||{};
-  const [filter,setFilter]=useState<"successful"|"guarded"|"all">("successful");
+  const [filter,setFilter]=useState<"successful"|"answered"|"guarded"|"all">("successful");
   const receipts=state?.receipts||[];
   const successful=useMemo(()=>receipts.filter(r=>r.status==="SUCCEEDED"),[receipts]);
   const guarded=useMemo(()=>receipts.filter(r=>r.status!=="SUCCEEDED"),[receipts]);
   // Accepted intelligence leads; everything else stays one click away for audit.
   const accepted=useMemo(()=>successful.filter(r=>(r.intelligence_state||"ACCEPTED")==="ACCEPTED"),[successful]);
-  const other=useMemo(()=>receipts.filter(r=>!accepted.includes(r)),[receipts,accepted]);
-  const shown=filter==="successful"?accepted:filter==="guarded"?other:receipts;
+  // A miner that answered without saying anything is a different fact from a
+  // call the spend guard stopped before it ever reached the network.
+  const answeredNoSignal=useMemo(()=>successful.filter(r=>(r.intelligence_state||"ACCEPTED")!=="ACCEPTED"),[successful]);
+  const shown=filter==="successful"?accepted:filter==="answered"?answeredNoSignal:filter==="guarded"?guarded:receipts;
 
   return <section className="panel telegraphPanel">
     <div className="panelHead"><div><span>TELEGRAPH INTELLIGENCE</span><small> EXTERNAL NETWORK · NON-AUTHORITATIVE</small></div><small>{state?.enabled===false?"DISABLED":`${s.accepted??0} ACCEPTED OF ${s.responses_purchased??successful.length} PURCHASED`}</small></div>
@@ -165,16 +167,18 @@ export default function TelegraphPanel({state,loading}:{state:TelegraphState|nul
         <div><small>RESPONSES PURCHASED</small><strong>{s.responses_purchased??successful.length}</strong><span>${(s.spend_usd||0).toFixed(2)} settled via x402</span></div>
         <div className="success"><small>ACCEPTED INTELLIGENCE</small><strong>{s.accepted??0}</strong><span>usable findings</span></div>
         <div><small>NO CASE SIGNAL</small><strong>{s.no_case_signal??0}</strong><span>answered, nothing specific</span></div>
-        <div className="guarded"><small>CONFLICTED / SKIPPED</small><strong>{(s.conflicted??0)+guarded.length}</strong><span>{s.conflicted??0} conflicted · {guarded.length} skipped</span></div>
+        <div className="guarded"><small>CONFLICTED</small><strong>{s.conflicted??0}</strong><span>contradicted verified evidence</span></div>
       </div>
 
       <div className="tgFilters" role="tablist">
         <button role="tab" aria-selected={filter==="successful"} className={filter==="successful"?"on":""} onClick={()=>setFilter("successful")}>Accepted intelligence ({accepted.length})</button>
-        <button role="tab" aria-selected={filter==="guarded"} className={filter==="guarded"?"on":""} onClick={()=>setFilter("guarded")}>No signal, conflicted &amp; skipped ({other.length})</button>
+        <button role="tab" aria-selected={filter==="answered"} className={filter==="answered"?"on":""} onClick={()=>setFilter("answered")}>Answered, no signal ({answeredNoSignal.length})</button>
+        <button role="tab" aria-selected={filter==="guarded"} className={filter==="guarded"?"on":""} onClick={()=>setFilter("guarded")}>Stopped before payment ({guarded.length})</button>
         <button role="tab" aria-selected={filter==="all"} className={filter==="all"?"on":""} onClick={()=>setFilter("all")}>All ({receipts.length})</button>
       </div>
 
-      {!shown.length&&<div className="emptyTrace">{loading?"Loading external intelligence…":"Telegraph is called when RPC verifies a new movement or destination, not on a schedule."}</div>}
+      {filter==="guarded"&&guarded.length>0&&<p className="tgBoundaryNote">These calls never reached the network. NEMESIS stopped them at the case spend ceiling and continued tracing on verified evidence, so no payment was made for any of them.</p>}
+      {!shown.length&&<div className="emptyTrace">{loading?"Loading external intelligence…":"Telegraph is called when a verified case event needs outside context, not on a schedule."}</div>}
       <div className="tgList">{shown.slice().reverse().map(r=><Receipt key={r.id} r={r}/>)}</div>
     </>}
   </section>;
