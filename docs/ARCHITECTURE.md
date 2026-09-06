@@ -1,8 +1,21 @@
 # NEMESIS architecture
 
+> **Scope.** This document describes the deterministic incident-response core:
+> discovery, verification, tracing, persistence and monitoring. The Telegraph
+> external-intelligence plane added for Track 3 is documented separately in
+> [the architecture decision](TELEGRAPH_ARCHITECTURE_DECISION.md),
+> [the live audit](TELEGRAPH_LIVE_AUDIT.md) and
+> [the integration ledger](TELEGRAPH_INTEGRATION_LEDGER.md), and is summarised
+> in the [project README](../README.md#architecture).
+
 NEMESIS is an autonomous crypto incident response system built around a strict separation between deterministic blockchain evidence and model interpretation.
 
 The deterministic trace core owns transaction facts, transfer paths, amounts, timestamps, graph structure, branch state, incident-candidate selection, and supported attribution evidence. Google ADK and Gemini may classify and summarize verified evidence, but they cannot invent blockchain facts, choose an unsupported theft transaction, or write unsupported identifiers into the graph.
+
+Telegraph adds a third plane rather than widening either of these two. Paid
+external miner intelligence is validated against verified facts and classified
+before it can appear as a finding, and it can never establish a blockchain fact,
+change branch state, or stop a trace.
 
 ## Runtime architecture
 
@@ -153,6 +166,8 @@ The application never claims access to exchange customer UID, email, KYC records
 
 | Integration | Status | Role |
 | --- | --- | --- |
+| Telegraph routed miners | Implemented and production verified | Paid external intelligence on verified case events |
+| x402 payment gateway | Implemented and production verified | Isolated Cloud Run service holding the payer key |
 | Ethereum JSON RPC | Implemented and cloud verified | Final transaction evidence and tracing |
 | Base JSON RPC | Implemented and cloud verified | Final transaction evidence and tracing |
 | FastAPI | Implemented | Owner-protected application API |

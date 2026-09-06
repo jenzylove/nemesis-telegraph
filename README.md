@@ -192,6 +192,7 @@ means), Timeline (how the investigation progressed).
 | [Live audit](docs/TELEGRAPH_LIVE_AUDIT.md) | Registry, leaderboard, miner schemas, x402 terms observed live |
 | [Integration ledger](docs/TELEGRAPH_INTEGRATION_LEDGER.md) | Every capability with its status and evidence, including what is still blocked |
 | [Evidence artifacts](docs/evidence/) | Raw settled responses and independent settlement checks |
+| [First paid spike](docs/evidence/spike-telegraph-x402/) | The standalone program that made the first settled x402 payment |
 | [Product requirements](nemesis-telegraph-prd.md) | The brief this build was written against |
 
 ---
@@ -236,6 +237,7 @@ backend/tests/           Backend test suite
 gateway/                 Isolated TypeScript x402 gateway (payer key lives only here)
 gateway/test/            Gateway test suite
 docs/                    Telegraph architecture, audit, ledger and evidence
+infra/                   Telegraph infrastructure bootstrap
 scripts/                 Operational and evidence scripts
 tests/                   Frontend tests
 ```
