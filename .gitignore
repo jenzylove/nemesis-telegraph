@@ -65,3 +65,6 @@ ev.json
 # Local build and deploy transcripts
 *-build*.log
 d-*.log
+
+# Local test-account credentials
+.judge-account.local
