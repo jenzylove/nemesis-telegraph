@@ -52,9 +52,10 @@ substitutions:
   _TELEGRAPH_MAX_AMOUNT_ATOMIC: "10000"
   _PER_CALL_USD: "0.01"
   _PER_CASE_EVENT_USD: "0.03"
-  # Zero is a kill switch: every quote exceeds it, so nothing can be paid.
-  # Raise this only as an explicit decision to spend.
-  _DAILY_USD: "0"
+  # Judging configuration. Enough headroom for judges to run real
+  # investigations, bounded so a runaway loop cannot drain the burner.
+  # Set to "0" as a kill switch: every quote exceeds zero, so nothing is paid.
+  _DAILY_USD: "0.50"
   _BASE_SEPOLIA_RPC_URL: https://sepolia.base.org
 options:
   logging: CLOUD_LOGGING_ONLY
