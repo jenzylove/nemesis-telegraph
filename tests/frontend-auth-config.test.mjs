@@ -190,7 +190,10 @@ test("a conflict is described against the chain, not against a protocol name", (
 
 test("uncertainty about the compromise method reads as a sentence", () => {
   assert.match(page, /Not yet determined/);
-  assert.match(page, /not enough verified evidence yet to determine how the wallet was compromised/);
+  assert.match(page, /not enough verified evidence yet to determine how this wallet was compromised/);
+  // The internal fallback strings must never reach the page again.
+  assert.doesNotMatch(page, /agent unavailable",summary:c\.error/);
+  assert.doesNotMatch(page, /Gemini classification requires configured Google credentials/);
 });
 
 test("no case surface speaks in protocol jargon", () => {
