@@ -115,7 +115,7 @@ function Receipt({r}:{r:TelegraphReceipt}){
         <span>on <b>{networkLabel}</b></span>
         <span className={r.payment?.settled?"settled":""}>{r.payment?.settled?"Payment settled ✓":"Settlement not reported"}</span>
       </div>
-      {(r.intelligence_state||"ACCEPTED")==="ACCEPTED"&&v.text&&<p className="tgNote">Miner reading: {v.text}</p>}
+      {(r.intelligence_state||"ACCEPTED")==="ACCEPTED"&&v.tone!=="info"&&<p className="tgNote">Miner reading: {v.text}</p>}
       {r.coverage_complete===false&&<p className="tgNote">The miner reported incomplete coverage, so the absence of a signal is not evidence of safety.</p>}
       {r.discrepancy&&<div className="tgClash"><b>This answer conflicts with the blockchain</b>{Object.entries(r.discrepancy.fields).map(([field,pair])=><span key={field}>{field}: the miner said <i>{String(pair.telegraph)}</i>, the chain shows <i>{String(pair.rpc)}</i></span>)}<small>Onchain evidence stands. The conflict is recorded and the answer is not counted as intelligence.</small></div>}
     </>:<p className="tgSkipped">{skipped!.body}</p>}
