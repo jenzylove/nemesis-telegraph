@@ -37,6 +37,7 @@ from .providers import JsonRpcProvider, RpcProviderError
 from .report import render as render_report
 from .repository import repository_from_settings
 from .telegraph import (
+    effective_state,
     FirestoreTelegraphReceiptRepository,
     InMemoryTelegraphReceiptRepository,
     TelegraphEnricher,
@@ -417,6 +418,14 @@ EXPLORER_BY_NETWORK = {"eip155:84532": "https://sepolia.basescan.org/tx/"}
 
 def telegraph_view(receipt) -> dict:
     payload = receipt.model_dump(mode="json")
+    state, note, discrepancy = effective_state(receipt)
+    payload["intelligence_state"] = state
+    payload["intelligence_note"] = note
+    payload["discrepancy"] = discrepancy
+    if state != "ACCEPTED":
+        # The miner's own words are kept in the raw payload, never promoted to
+        # a finding when the answer was not usable intelligence.
+        payload["result_summary"] = None
     payload["evidence_plane"] = "telegraph_external_intelligence"
     payload["authoritative_for_chain_facts"] = False
     payment = receipt.payment or {}
@@ -450,6 +459,10 @@ async def telegraph_receipts(case_id: str) -> dict:
         return {"enabled": False, "receipts": [], "summary": {}}
     found = await telegraph.receipts.list_by_case(case_id)
     settled = [r for r in found if r.status == "SUCCEEDED"]
+    states = {r.id: effective_state(r)[0] for r in settled}
+    accepted = [r for r in settled if states[r.id] == "ACCEPTED"]
+    no_signal = [r for r in settled if states[r.id] == "NO_CASE_SIGNAL"]
+    conflicted = [r for r in settled if states[r.id] == "CONFLICTED"]
     return {
         "enabled": telegraph.enabled,
         "receipts": [telegraph_view(r) for r in found],
@@ -458,9 +471,17 @@ async def telegraph_receipts(case_id: str) -> dict:
             "succeeded": len(settled),
             "failed": len([r for r in found if r.status == "FAILED"]),
             "intents": sorted({r.intent for r in found}),
-            "miners": sorted({r.miner_name for r in settled if r.miner_name}),
+            # Only miners whose answer was actually usable are credited here.
+            "miners": sorted({r.miner_name for r in accepted if r.miner_name}),
+            "responding_miners": sorted({r.miner_name for r in settled if r.miner_name}),
             "spend_usd": round(sum(r.reported_cost_usd or 0 for r in settled), 6),
-            "discrepancies": len([r for r in settled if r.discrepancy]),
+            "discrepancies": len(conflicted),
+            # Paying for a response and receiving intelligence are different
+            # events, and the case summary must not conflate them.
+            "responses_purchased": len(settled),
+            "accepted": len(accepted),
+            "no_case_signal": len(no_signal),
+            "conflicted": len(conflicted),
         },
     }
 
@@ -502,9 +523,11 @@ async def telegraph_evidence(case_id: str) -> dict:
         "answered_count": len(settled),
         "settled_spend_usd": round(sum(r.reported_cost_usd or 0 for r in settled), 6),
         "receipts": [r.model_dump(mode="json") for r in found],
-        "disagreements_with_rpc": [
-            {"receipt_id": r.id, "target": r.target_value, "fields": r.discrepancy["fields"]}
-            for r in settled if r.discrepancy
+        "accepted_intelligence": len([r for r in settled if effective_state(r)[0] == "ACCEPTED"]),
+        "no_case_signal": len([r for r in settled if effective_state(r)[0] == "NO_CASE_SIGNAL"]),
+        "disagreements_with_chain_evidence": [
+            {"receipt_id": r.id, "target": r.target_value, "fields": effective_state(r)[2]["fields"]}
+            for r in settled if effective_state(r)[2]
         ],
     }
 

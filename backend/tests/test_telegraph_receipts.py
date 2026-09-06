@@ -13,6 +13,8 @@ from app.telegraph import (
     should_enrich,
     summarize,
     extract_summary,
+    classify_intelligence,
+    surviving_discrepancy,
 )
 
 CASE = "NMS-260826-915B337C"
@@ -130,7 +132,7 @@ async def test_a_miner_contradicting_rpc_records_the_clash_without_resolving_it(
         expected={"status": "ok", "block_number": 21895251},
     )
     assert receipt.status == "SUCCEEDED"
-    assert receipt.discrepancy["authoritative"] == "json_rpc"
+    assert receipt.discrepancy["authoritative"] == "onchain"
     assert set(receipt.discrepancy["fields"]) == {"status", "block_number"}
 
 
@@ -309,3 +311,95 @@ async def test_a_response_without_challenge_terms_leaves_them_null():
     r = await service.enrich(CASE, "ONCHAIN_TX_LOOKUP", "transaction", TX, "ethereum", "VERIFIED_INCIDENT")
     assert r.payment_network is None
     assert r.payment_asset is None
+
+
+# --- semantic normalisation: only real conflicts count ---------------------
+
+def test_confirmed_and_success_are_the_same_claim():
+    """The live regression: a miner saying confirmed is agreeing, not disputing."""
+    assert detect_discrepancy({"status": "confirmed"}, {"status": "success"}) is None
+
+
+def test_the_other_wordings_seen_in_production_also_agree():
+    for word in ("ok", "successful", "succeeded", "SUCCESS", "1", "0x1", "mined"):
+        assert detect_discrepancy({"status": word}, {"status": "success"}) is None, word
+
+
+def test_a_real_status_conflict_is_still_reported():
+    clash = detect_discrepancy({"status": "reverted"}, {"status": "success"})
+    assert clash and clash["fields"]["status"]["telegraph"] == "reverted"
+    assert clash["authoritative"] == "onchain"
+
+
+def test_address_casing_is_not_a_disagreement():
+    upper = "0xABC123DEF4567890ABCDEF1234567890ABCDEF12"
+    assert detect_discrepancy({"to": upper}, {"to": upper.lower()}) is None
+
+
+def test_hex_and_decimal_block_numbers_are_the_same_number():
+    assert detect_discrepancy({"block_number": "0x18a"}, {"block_number": 394}) is None
+    assert detect_discrepancy({"block_number": "394"}, {"block_number": 394}) is None
+
+
+def test_a_genuinely_different_block_still_conflicts():
+    assert detect_discrepancy({"block_number": 999}, {"block_number": 394}) is not None
+
+
+def test_a_stale_false_disagreement_stops_being_shown():
+    """Receipts written before normalisation must not keep displaying a fake clash."""
+    stale = {"fields": {"status": {"telegraph": "ok", "rpc": "success"}}, "authoritative": "json_rpc"}
+    assert surviving_discrepancy(stale) is None
+
+
+def test_a_stored_real_disagreement_survives():
+    real = {"fields": {"status": {"telegraph": "reverted", "rpc": "success"}}, "authoritative": "json_rpc"}
+    assert surviving_discrepancy(real)["fields"]["status"]["telegraph"] == "reverted"
+
+
+# --- paid is not the same as useful ----------------------------------------
+
+def test_a_conflicting_answer_is_not_counted_as_intelligence():
+    state, note = classify_intelligence("SUCCEEDED", {"fields": {}}, {"verdict": "high_risk"}, "high_risk")
+    assert state == "CONFLICTED"
+    assert "conflicts" in note
+
+
+def test_a_non_committal_verdict_is_not_a_finding():
+    for verdict in ("RECHECK", "unavailable", "unknown", "no_data"):
+        state, _ = classify_intelligence("SUCCEEDED", None, {"verdict": verdict}, verdict)
+        assert state == "NO_CASE_SIGNAL", verdict
+
+
+def test_prose_recalled_from_a_model_is_not_case_evidence():
+    """The live SarzOps reply: confident prose from an LLM, no case telemetry."""
+    state, note = classify_intelligence(
+        "SUCCEEDED", None,
+        {"mode": "knowledge", "source": "groq:openai/gpt-oss-120b", "signal": "The address appears on several risk databases"},
+        "flagged",
+    )
+    assert state == "NO_CASE_SIGNAL"
+    assert "general knowledge" in note
+
+
+def test_a_real_observation_is_accepted():
+    state, note = classify_intelligence("SUCCEEDED", None, {"verdict": "elevated_risk", "risk_score": 0.4}, "elevated_risk")
+    assert state == "ACCEPTED"
+    assert note is None
+
+
+def test_an_unpaid_or_failed_call_is_never_intelligence():
+    assert classify_intelligence("FAILED", None, None, None)[0] == "NOT_ANSWERED"
+
+
+@pytest.mark.asyncio
+async def test_an_unusable_answer_does_not_get_to_speak_in_its_own_words():
+    hallucinated = {
+        **SETTLED,
+        "result": {"mode": "knowledge", "signal": "Chainalysis flagged this address as high risk", "verdict": "RECHECK"},
+    }
+    service = enricher(StubGateway([hallucinated]))
+    r = await service.enrich(CASE, "FRAUD_DETECTION", "address", ADDRESS, "ethereum", "VERIFIED_INCIDENT")
+    assert r.intelligence_state == "NO_CASE_SIGNAL"
+    assert r.result_summary is None, "unusable prose must not be promoted to a summary"
+    # The original answer stays available for audit.
+    assert "Chainalysis" in r.result["signal"]

@@ -1,6 +1,6 @@
 "use client";
 
-type Section="overview"|"graph"|"evidence"|"intelligence"|"timeline";
+type Section="overview"|"graph"|"evidence"|"intelligence"|"assessment"|"timeline";
 
 type Props={
   caseState:string;
@@ -10,6 +10,9 @@ type Props={
   branchCount:number;
   dormantCount:number;
   telegraphPaid:number;
+  telegraphAccepted:number;
+  telegraphNoSignal:number;
+  telegraphConflicted:number;
   telegraphSpend:number;
   minerNames:string[];
   provisional:boolean;
@@ -30,14 +33,15 @@ const short=(v:string)=>v&&v.length>16?`${v.slice(0,10)}…${v.slice(-8)}`:v||"�
  */
 export default function CaseOverview({
   caseState,chain,txStatus,txHash,branchCount,dormantCount,
-  telegraphPaid,telegraphSpend,minerNames,provisional,confidence,lifecycle,go,
+  telegraphPaid,telegraphAccepted,telegraphNoSignal,telegraphConflicted,
+  telegraphSpend,minerNames,provisional,confidence,lifecycle,go,
 }:Props){
   const monitoring=dormantCount>0;
   const cards:{id:Section;title:string;sub:string;value:string;glyph:string}[]=[
-    {id:"evidence",title:"ONCHAIN EVIDENCE",sub:"Verified blockchain facts",value:`${chain.toUpperCase()} · ${txStatus.toUpperCase()}`,glyph:"◎"},
+    {id:"evidence",title:"VERIFIED EVIDENCE",sub:"What we know for sure",value:`${chain.toUpperCase()} · ${txStatus.toUpperCase()}`,glyph:"◎"},
     {id:"graph",title:"FUND TRACE",sub:"Where the funds moved",value:`${branchCount} branch${branchCount===1?"":"es"}`,glyph:"⌁"},
-    {id:"intelligence",title:"TELEGRAPH INTELLIGENCE",sub:"Paid miner responses and x402 proof",value:telegraphPaid?`${telegraphPaid} paid receipt${telegraphPaid===1?"":"s"}`:"No paid answers yet",glyph:"◇"},
-    {id:"evidence",title:"AGENT ASSESSMENT",sub:"Evidence-grounded interpretation",value:"Bounded by evidence",glyph:"◆"},
+    {id:"intelligence",title:"TELEGRAPH INTELLIGENCE",sub:"Paid miner responses and x402 proof",value:telegraphPaid?`${telegraphAccepted} accepted of ${telegraphPaid} purchased`:"No responses purchased yet",glyph:"◇"},
+    {id:"assessment",title:"AGENT ASSESSMENT",sub:"What NEMESIS thinks this evidence means",value:"Bounded by evidence",glyph:"◆"},
   ];
 
   return <>
@@ -51,10 +55,10 @@ export default function CaseOverview({
               : "A verified theft transaction was identified and traced."}
           </h3>
           <p>
-            NEMESIS verified the transaction over JSON-RPC, followed the funds across
+            NEMESIS verified this transaction directly on the blockchain, followed the funds across
             {" "}{branchCount} branch{branchCount===1?"":"es"}, and
             {telegraphPaid>0
-              ? ` automatically purchased ${telegraphPaid} independent miner ${telegraphPaid===1?"answer":"answers"} through Telegraph when the case required outside context.`
+              ? ` automatically purchased ${telegraphPaid} independent miner ${telegraphPaid===1?"response":"responses"} through Telegraph when the case required outside context${telegraphAccepted?`, of which ${telegraphAccepted} added usable intelligence`:", none of which returned a case-specific finding"}.`
               : " will purchase independent Telegraph intelligence when a verified case event requires outside context."}
             {monitoring?" Monitoring stays active on the quiet branches.":""}
           </p>
@@ -67,9 +71,10 @@ export default function CaseOverview({
       </div>
 
       <div className="execFacts">
-        <div><small>NEMESIS VERIFIED</small><b>{txStatus.toUpperCase()}</b><span>{short(txHash)}</span></div>
+        <div><small>VERIFIED ONCHAIN</small><b>{txStatus.toUpperCase()}</b><span>{short(txHash)}</span></div>
         <div><small>FUNDS TRACED</small><b>{branchCount}</b><span>persisted branches</span></div>
-        <div><small>TELEGRAPH PURCHASED</small><b>{telegraphPaid}</b><span>${telegraphSpend.toFixed(2)} settled via x402</span></div>
+        <div><small>MINER RESPONSES</small><b>{telegraphPaid}</b><span>${telegraphSpend.toFixed(2)} settled via x402</span></div>
+        <div><small>ACCEPTED INTELLIGENCE</small><b>{telegraphAccepted}</b><span>{telegraphNoSignal} no case signal{telegraphConflicted?` · ${telegraphConflicted} conflicted`:""}</span></div>
         <div><small>MONITORING</small><b>{monitoring?"ACTIVE":"IDLE"}</b><span>{monitoring?"resumes on new movement":"no dormant branch"}</span></div>
       </div>
 
@@ -87,7 +92,7 @@ export default function CaseOverview({
           <p>
             When a verified case event needed outside context, NEMESIS paid {telegraphPaid} Telegraph
             {" "}miner{telegraphPaid===1?"":"s"} over x402 and kept the settlement proof.
-            {minerNames.length?` Answered by ${minerNames.join(", ")}.`:""} Miner claims add context; they are not chain truth.
+            {minerNames.length?` Usable answers came from ${minerNames.join(", ")}.`:""} Miner claims add context; they are never treated as blockchain truth.
           </p>
         </div>
         <button className="primary" onClick={()=>go("intelligence")}>View Telegraph intelligence →</button>

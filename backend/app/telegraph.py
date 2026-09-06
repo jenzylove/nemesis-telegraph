@@ -57,8 +57,13 @@ class TelegraphReceipt(BaseModel):
     confidence: float | None = None
     risk_score: float | None = None
     coverage_complete: bool | None = None
-    # Set when a miner contradicts RPC. RPC still wins; the clash is recorded.
+    # Set when a miner contradicts the chain. Onchain evidence still wins; the
+    # clash is recorded rather than resolved.
     discrepancy: dict | None = None
+    # Whether the paid answer was actually usable. Paying for a response and
+    # receiving intelligence are not the same event.
+    intelligence_state: Literal["ACCEPTED", "NO_CASE_SIGNAL", "CONFLICTED", "NOT_ANSWERED"] = "NOT_ANSWERED"
+    intelligence_note: str | None = None
 
     quoted_cost_usdc: str | None = None
     quoted_amount_atomic: str | None = None
@@ -340,11 +345,51 @@ def extract_summary(result: dict | None) -> str | None:
     return None
 
 
-def detect_discrepancy(result: dict | None, expected: dict) -> dict | None:
-    """Compares a miner's transaction claims against RPC-verified facts.
+# Ways different sources spell the same transaction outcome. A miner saying
+# "ok" or "confirmed" where the chain says "success" is agreement, not conflict,
+# and reporting it as a disagreement destroys trust in the ones that are real.
+_SUCCESS_WORDS = {"success", "successful", "succeeded", "confirmed", "ok", "mined", "complete", "completed", "1", "0x1", "true"}
+_FAILURE_WORDS = {"failed", "failure", "fail", "reverted", "revert", "error", "0", "0x0", "false"}
 
-    RPC is authoritative, so a mismatch is never resolved here. It is recorded
-    so the case can show that two sources disagreed.
+_STATUS_FIELDS = {"status", "tx_status", "transaction_status", "receipt_status"}
+
+
+def canonical_claim(field: str, value):
+    """Reduces a claim to the meaning two sources can actually be compared on."""
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    if not text:
+        return None
+    if field in _STATUS_FIELDS:
+        if text in _SUCCESS_WORDS:
+            return "success"
+        if text in _FAILURE_WORDS:
+            return "failed"
+        return text
+    # Addresses and hashes differ only by casing and are compared lowercased.
+    if text.startswith("0x") and len(text) > 2:
+        try:
+            # A short 0x value is a number written in hex, not an identifier.
+            return str(int(text, 16)) if len(text) <= 18 else text
+        except ValueError:
+            return text
+    try:
+        number = int(text, 10)
+    except ValueError:
+        try:
+            return str(float(text))
+        except ValueError:
+            return text
+    return str(number)
+
+
+def detect_discrepancy(result: dict | None, expected: dict) -> dict | None:
+    """Compares a miner's transaction claims against independently verified facts.
+
+    Onchain evidence is authoritative, so a mismatch is never resolved here. It
+    is recorded so the case can show that two sources genuinely disagreed.
+    Equivalent wordings are normalized first: only a real conflict counts.
     """
     if not isinstance(result, dict) or not expected:
         return None
@@ -353,14 +398,84 @@ def detect_discrepancy(result: dict | None, expected: dict) -> dict | None:
         claimed = result.get(field)
         if claimed is None or truth is None:
             continue
-        if isinstance(truth, str) and isinstance(claimed, str):
-            if claimed.lower() != truth.lower():
-                clashes[field] = {"telegraph": claimed, "rpc": truth}
-        elif str(claimed) != str(truth):
-            clashes[field] = {"telegraph": claimed, "rpc": truth}
+        left, right = canonical_claim(field, claimed), canonical_claim(field, truth)
+        if left is None or right is None or left == right:
+            continue
+        clashes[field] = {"telegraph": claimed, "rpc": truth}
     if not clashes:
         return None
-    return {"fields": clashes, "authoritative": "json_rpc"}
+    return {"fields": clashes, "authoritative": "onchain"}
+
+
+# Verdicts that mean the miner declined to commit to anything about this case.
+_NON_COMMITTAL = {"recheck", "unknown", "unavailable", "no_data", "insufficient_data", "none", "n/a", "inconclusive"}
+
+
+def classify_intelligence(status: str, discrepancy, result: dict | None, label: str | None) -> tuple[str, str | None]:
+    """Decides whether a paid answer is usable intelligence.
+
+    Paying for a response and receiving intelligence are separate events. A
+    miner can settle a payment, return prose, and still have said nothing about
+    this case, which must not be counted or displayed as a finding.
+    """
+    if status != "SUCCEEDED":
+        return "NOT_ANSWERED", None
+    if discrepancy:
+        return "CONFLICTED", "The miner made a claim that conflicts with verified onchain evidence."
+
+    data = result if isinstance(result, dict) else {}
+    verdict = str(data.get("verdict") or data.get("risk_tier") or "").strip().lower()
+    if verdict in _NON_COMMITTAL:
+        return "NO_CASE_SIGNAL", "The miner answered but did not commit to a finding about this case."
+    if label in ("NO_EXTERNAL_SIGNAL", "INCONCLUSIVE"):
+        return "NO_CASE_SIGNAL", "The miner answered but returned no case-specific finding."
+
+    # An answer recalled from a model's memory is not an observation of this
+    # case. These arrive worded confidently and must not be shown as findings.
+    if str(data.get("mode") or "").strip().lower() == "knowledge":
+        return "NO_CASE_SIGNAL", "The miner answered from general knowledge rather than from data about this case."
+
+    return "ACCEPTED", None
+
+
+def surviving_discrepancy(discrepancy) -> dict | None:
+    """Re-checks a stored disagreement against current normalization rules.
+
+    Receipts written before equivalent wordings were understood can carry a
+    clash that is not a clash, such as a miner saying "ok" where the chain says
+    "success". Those must stop being displayed as conflicts. The raw payload is
+    never altered; only the judgement about it is refreshed.
+    """
+    if not isinstance(discrepancy, dict):
+        return None
+    fields = discrepancy.get("fields")
+    if not isinstance(fields, dict):
+        return None
+    kept = {
+        field: pair for field, pair in fields.items()
+        if isinstance(pair, dict)
+        and canonical_claim(field, pair.get("telegraph")) is not None
+        and canonical_claim(field, pair.get("rpc")) is not None
+        and canonical_claim(field, pair.get("telegraph")) != canonical_claim(field, pair.get("rpc"))
+    }
+    if not kept:
+        return None
+    return {"fields": kept, "authoritative": "onchain"}
+
+
+def effective_state(receipt) -> tuple[str, str | None, dict | None]:
+    """The state, note and disagreement a reader should actually be shown.
+
+    Receipts persisted before intelligence quality was assessed carry no state,
+    so it is derived from what was stored rather than defaulting them all to
+    unanswered and undercounting real intelligence.
+    """
+    discrepancy = surviving_discrepancy(receipt.discrepancy)
+    stored = getattr(receipt, "intelligence_state", "NOT_ANSWERED")
+    if receipt.status == "SUCCEEDED" and (stored == "NOT_ANSWERED" or discrepancy != receipt.discrepancy):
+        state, note = classify_intelligence(receipt.status, discrepancy, receipt.result, receipt.label)
+        return state, note, discrepancy
+    return stored, getattr(receipt, "intelligence_note", None), discrepancy
 
 
 def now() -> datetime:
@@ -547,6 +662,13 @@ class TelegraphEnricher:
             receipt.error = receipt.error or "Telegraph answered a different intent"
         if receipt.status == "SUCCEEDED":
             receipt.discrepancy = detect_discrepancy(result, expected)
+        receipt.intelligence_state, receipt.intelligence_note = classify_intelligence(
+            receipt.status, receipt.discrepancy, result, receipt.label
+        )
+        # Only an accepted answer gets to speak in its own words. Anything else
+        # keeps its payload for audit but is summarized honestly instead.
+        if receipt.intelligence_state != "ACCEPTED":
+            receipt.result_summary = None
         receipt.updated_at = now()
         return receipt
 

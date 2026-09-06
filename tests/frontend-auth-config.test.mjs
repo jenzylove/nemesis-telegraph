@@ -104,10 +104,10 @@ const overview = readFileSync(new URL("../app/case-overview.tsx", import.meta.ur
 const panel = readFileSync(new URL("../app/telegraph-panel.tsx", import.meta.url), "utf8");
 
 test("overview routes to each section instead of repeating it", () => {
-  for (const id of ["evidence", "graph", "intelligence", "timeline"]) {
+  for (const id of ["evidence", "graph", "intelligence", "assessment", "timeline"]) {
     assert.ok(overview.includes(`go("${id}")`) || overview.includes(`id:"${id}"`), `no route to ${id}`);
   }
-  assert.match(overview, /ONCHAIN EVIDENCE/);
+  assert.match(overview, /VERIFIED EVIDENCE/);
   assert.match(overview, /FUND TRACE/);
   assert.match(overview, /TELEGRAPH INTELLIGENCE/);
   assert.match(overview, /AGENT ASSESSMENT/);
@@ -152,4 +152,43 @@ test("skipped calls read as product language, with the policy string demoted", (
 test("the landing CTAs do different things", () => {
   assert.match(page, /Explore the system/);
   assert.match(page, /getElementById\("system"\)\?\.scrollIntoView/);
+});
+
+// --- clarity + intelligence quality ---
+test("Assessment is its own destination, not a detour into Evidence", () => {
+  assert.match(page, /section==="assessment"/);
+  assert.match(page, /◆ Assessment/);
+  assert.match(overview, /id:"assessment",title:"AGENT ASSESSMENT"/);
+});
+
+test("primary copy does not speak in infrastructure terms", () => {
+  for (const jargon of [/JSON-RPC/, /RPC verified/, /RPC confirmed/]) {
+    assert.doesNotMatch(overview, jargon, `overview leaks ${jargon}`);
+  }
+  assert.match(overview, /verified this transaction directly on the blockchain/);
+});
+
+test("an unusable answer is never repeated as a finding", () => {
+  assert.match(panel, /NO CASE-SPECIFIC SIGNAL/);
+  assert.match(panel, /No case-specific signal returned/);
+  assert.match(panel, /CONFLICTED · NOT ACCEPTED/);
+  assert.match(panel, /state==="NO_CASE_SIGNAL"\)return/);
+});
+
+test("the summary separates responses purchased from intelligence accepted", () => {
+  assert.match(panel, /RESPONSES PURCHASED/);
+  assert.match(panel, /ACCEPTED INTELLIGENCE/);
+  assert.match(panel, /NO CASE SIGNAL/);
+  assert.match(overview, /ACCEPTED INTELLIGENCE/);
+  assert.match(overview, /MINER RESPONSES/);
+});
+
+test("a conflict is described against the chain, not against a protocol name", () => {
+  assert.match(panel, /This answer conflicts with the blockchain/);
+  assert.doesNotMatch(panel, /Telegraph disagrees with RPC/);
+});
+
+test("uncertainty about the compromise method reads as a sentence", () => {
+  assert.match(page, /Not yet determined/);
+  assert.match(page, /not enough verified evidence yet to determine how the wallet was compromised/);
 });

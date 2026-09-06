@@ -2,8 +2,8 @@
 import {useMemo,useState} from "react";
 import {shortHex,telegraphVerdict} from "./telegraph-semantics.mjs";
 
-export type TelegraphReceipt={id:string;intent:string;returned_intent:string|null;intent_matched:boolean|null;target_type:string;target_value:string;target_chain:string|null;routing_mode:string;fallback_reason:string|null;miner_id:string|null;miner_name:string|null;result:Record<string,unknown>|null;result_summary?:string|null;label:string|null;confidence:number|null;risk_score:number|null;coverage_complete:boolean|null;discrepancy:{fields:Record<string,{telegraph:unknown;rpc:unknown}>;authoritative:string}|null;quoted_cost_usdc:string|null;quoted_amount_atomic?:string|null;payment_network?:string|null;payment_asset?:string|null;payment_payee?:string|null;payment_scheme?:string|null;reported_cost_usd:number|null;duration_ms:number|null;signal_hash:string|null;payment:{network?:string;settlement_transaction?:string|null;settled?:boolean;payer?:string}|null;payment_proof?:Record<string,unknown>|null;idempotency_key?:string|null;raw_response_hash?:string|null;status:string;error_code:string|null;error:string|null;trigger:string;created_at:string;has_proof:boolean};
-export type TelegraphState={enabled:boolean;receipts:TelegraphReceipt[];summary:{total?:number;succeeded?:number;failed?:number;intents?:string[];miners?:string[];spend_usd?:number;discrepancies?:number}};
+export type TelegraphReceipt={id:string;intent:string;returned_intent:string|null;intent_matched:boolean|null;target_type:string;target_value:string;target_chain:string|null;routing_mode:string;fallback_reason:string|null;miner_id:string|null;miner_name:string|null;result:Record<string,unknown>|null;result_summary?:string|null;label:string|null;confidence:number|null;risk_score:number|null;coverage_complete:boolean|null;discrepancy:{fields:Record<string,{telegraph:unknown;rpc:unknown}>;authoritative:string}|null;quoted_cost_usdc:string|null;quoted_amount_atomic?:string|null;payment_network?:string|null;payment_asset?:string|null;payment_payee?:string|null;payment_scheme?:string|null;reported_cost_usd:number|null;duration_ms:number|null;signal_hash:string|null;payment:{network?:string;settlement_transaction?:string|null;settled?:boolean;payer?:string}|null;payment_proof?:Record<string,unknown>|null;idempotency_key?:string|null;raw_response_hash?:string|null;intelligence_state?:string;intelligence_note?:string|null;status:string;error_code:string|null;error:string|null;trigger:string;created_at:string;has_proof:boolean};
+export type TelegraphState={enabled:boolean;receipts:TelegraphReceipt[];summary:{total?:number;succeeded?:number;failed?:number;intents?:string[];miners?:string[];spend_usd?:number;discrepancies?:number;responses_purchased?:number;accepted?:number;no_case_signal?:number;conflicted?:number}};
 
 const short=shortHex;
 const verdict=telegraphVerdict;
@@ -32,7 +32,25 @@ function skippedReason(r:TelegraphReceipt){
   }
 }
 
+/** How a paid answer is allowed to present itself. */
+const STATE_LABEL:Record<string,{badge:string;tone:string}>={
+  ACCEPTED:{badge:"ACCEPTED INTELLIGENCE",tone:"accepted"},
+  NO_CASE_SIGNAL:{badge:"NO CASE-SPECIFIC SIGNAL",tone:"nosignal"},
+  CONFLICTED:{badge:"CONFLICTED · NOT ACCEPTED",tone:"conflicted"},
+};
+
+/**
+ * Only an accepted answer speaks in its own words.
+ *
+ * A miner can settle a payment and still say nothing about this case, or say
+ * something confidently wrong. Repeating that prose as a finding would put an
+ * unverified claim about a real address in front of a reader, so it stays in
+ * the raw payload and the summary states plainly what happened instead.
+ */
 function summaryOf(r:TelegraphReceipt){
+  const state=r.intelligence_state||"ACCEPTED";
+  if(state==="NO_CASE_SIGNAL")return r.intelligence_note||"No case-specific signal returned. The full response is available in the raw payload.";
+  if(state==="CONFLICTED")return r.intelligence_note||"This answer conflicts with verified onchain evidence and was not accepted as intelligence.";
   if(r.result_summary)return r.result_summary;
   const result=r.result||{};
   const value=result.signal||result.summary||result.explanation||result.answer||result.verdict;
@@ -86,7 +104,7 @@ function Receipt({r}:{r:TelegraphReceipt}){
         <b>{paid?r.intent.replaceAll("_"," "):skipped!.title}</b>
         <small>{new Date(r.created_at).toLocaleString()}</small>
       </div>
-      {paid&&<span className={`tgVerdict ${v.tone}`}>{v.text}</span>}
+      {paid&&<span className={`tgVerdict ${STATE_LABEL[r.intelligence_state||"ACCEPTED"]?.tone||"info"}`}>{STATE_LABEL[r.intelligence_state||"ACCEPTED"]?.badge||v.text}</span>}
     </header>
 
     {paid?<>
@@ -97,8 +115,9 @@ function Receipt({r}:{r:TelegraphReceipt}){
         <span>on <b>{networkLabel}</b></span>
         <span className={r.payment?.settled?"settled":""}>{r.payment?.settled?"Payment settled ✓":"Settlement not reported"}</span>
       </div>
+      {(r.intelligence_state||"ACCEPTED")==="ACCEPTED"&&v.text&&<p className="tgNote">Miner reading: {v.text}</p>}
       {r.coverage_complete===false&&<p className="tgNote">The miner reported incomplete coverage, so the absence of a signal is not evidence of safety.</p>}
-      {r.discrepancy&&<div className="tgClash"><b>Telegraph disagrees with RPC</b>{Object.entries(r.discrepancy.fields).map(([field,pair])=><span key={field}>{field}: Telegraph said <i>{String(pair.telegraph)}</i>, RPC verified <i>{String(pair.rpc)}</i></span>)}<small>RPC remains authoritative. The disagreement is recorded, not resolved.</small></div>}
+      {r.discrepancy&&<div className="tgClash"><b>This answer conflicts with the blockchain</b>{Object.entries(r.discrepancy.fields).map(([field,pair])=><span key={field}>{field}: the miner said <i>{String(pair.telegraph)}</i>, the chain shows <i>{String(pair.rpc)}</i></span>)}<small>Onchain evidence stands. The conflict is recorded and the answer is not counted as intelligence.</small></div>}
     </>:<p className="tgSkipped">{skipped!.body}</p>}
 
     <footer>
@@ -127,10 +146,13 @@ export default function TelegraphPanel({state,loading}:{state:TelegraphState|nul
   const receipts=state?.receipts||[];
   const successful=useMemo(()=>receipts.filter(r=>r.status==="SUCCEEDED"),[receipts]);
   const guarded=useMemo(()=>receipts.filter(r=>r.status!=="SUCCEEDED"),[receipts]);
-  const shown=filter==="successful"?successful:filter==="guarded"?guarded:receipts;
+  // Accepted intelligence leads; everything else stays one click away for audit.
+  const accepted=useMemo(()=>successful.filter(r=>(r.intelligence_state||"ACCEPTED")==="ACCEPTED"),[successful]);
+  const other=useMemo(()=>receipts.filter(r=>!accepted.includes(r)),[receipts,accepted]);
+  const shown=filter==="successful"?accepted:filter==="guarded"?other:receipts;
 
   return <section className="panel telegraphPanel">
-    <div className="panelHead"><div><span>TELEGRAPH INTELLIGENCE</span><small> EXTERNAL NETWORK · NON-AUTHORITATIVE</small></div><small>{state?.enabled===false?"DISABLED":`${successful.length} PAID RECEIPTS`}</small></div>
+    <div className="panelHead"><div><span>TELEGRAPH INTELLIGENCE</span><small> EXTERNAL NETWORK · NON-AUTHORITATIVE</small></div><small>{state?.enabled===false?"DISABLED":`${s.accepted??0} ACCEPTED OF ${s.responses_purchased??successful.length} PURCHASED`}</small></div>
     <div className="tgBoundary">
       <b>How Telegraph strengthened this investigation</b>
       <span>Independent miner intelligence, purchased automatically when a verified case event required external context. Each answer is paid for over x402 and its settlement is preserved. Miner claims support triage; every blockchain fact on this case still comes from NEMESIS JSON-RPC verification.</span>
@@ -140,15 +162,15 @@ export default function TelegraphPanel({state,loading}:{state:TelegraphState|nul
 
     {state?.enabled!==false&&<>
       <div className="tgSummary">
-        <div className="success"><small>PAID INTELLIGENCE</small><strong>{successful.length}</strong><span>miner answers purchased</span></div>
-        <div><small>SETTLED SPEND</small><strong>${(s.spend_usd||0).toFixed(2)}</strong><span>USDC via x402</span></div>
-        <div><small>MINERS</small><strong>{s.miners?.length||0}</strong><span>{s.miners?.join(" · ")||"none yet"}</span></div>
-        <div className="guarded"><small>SKIPPED BY POLICY</small><strong>{guarded.length}</strong><span>budget or network guards</span></div>
+        <div><small>RESPONSES PURCHASED</small><strong>{s.responses_purchased??successful.length}</strong><span>${(s.spend_usd||0).toFixed(2)} settled via x402</span></div>
+        <div className="success"><small>ACCEPTED INTELLIGENCE</small><strong>{s.accepted??0}</strong><span>usable findings</span></div>
+        <div><small>NO CASE SIGNAL</small><strong>{s.no_case_signal??0}</strong><span>answered, nothing specific</span></div>
+        <div className="guarded"><small>CONFLICTED / SKIPPED</small><strong>{(s.conflicted??0)+guarded.length}</strong><span>{s.conflicted??0} conflicted · {guarded.length} skipped</span></div>
       </div>
 
       <div className="tgFilters" role="tablist">
-        <button role="tab" aria-selected={filter==="successful"} className={filter==="successful"?"on":""} onClick={()=>setFilter("successful")}>Paid intelligence ({successful.length})</button>
-        <button role="tab" aria-selected={filter==="guarded"} className={filter==="guarded"?"on":""} onClick={()=>setFilter("guarded")}>Skipped ({guarded.length})</button>
+        <button role="tab" aria-selected={filter==="successful"} className={filter==="successful"?"on":""} onClick={()=>setFilter("successful")}>Accepted intelligence ({accepted.length})</button>
+        <button role="tab" aria-selected={filter==="guarded"} className={filter==="guarded"?"on":""} onClick={()=>setFilter("guarded")}>No signal, conflicted &amp; skipped ({other.length})</button>
         <button role="tab" aria-selected={filter==="all"} className={filter==="all"?"on":""} onClick={()=>setFilter("all")}>All ({receipts.length})</button>
       </div>
 

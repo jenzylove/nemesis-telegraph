@@ -180,3 +180,16 @@
   .execLink{margin-left:0}
   .tgTechnical div{grid-template-columns:1fr;gap:2px}
 }
+
+/* Intelligence quality states. Accepted is the only one that reads as a finding. */
+.tgVerdict.accepted{color:var(--acid);border-color:var(--acid)}
+.tgVerdict.nosignal{color:var(--muted);border-color:var(--line)}
+.tgVerdict.conflicted{color:var(--red);border-color:var(--red)}
+.tgReceipt.nosignal{border-left-color:#4a5250}
+.tgReceipt.conflicted{border-left-color:var(--red)}
+.techDetails{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.techDetails summary{cursor:pointer;font:10px monospace;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.techDetails summary:hover{color:var(--acid)}
+.techDetails[open] summary{margin-bottom:10px}
+.reasonList{margin:0;padding-left:18px;color:#9fb0a8;font-size:12px;line-height:1.7}
+.assessHeadline{font-size:17px;color:var(--text);margin:6px 0 10px;letter-spacing:-.01em}

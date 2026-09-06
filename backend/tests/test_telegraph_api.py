@@ -65,7 +65,8 @@ async def test_the_owner_sees_their_receipts_and_a_spend_summary(wired):
     assert payload["summary"]["total"] == 2
     assert payload["summary"]["succeeded"] == 1
     assert payload["summary"]["failed"] == 1
-    assert payload["summary"]["miners"] == ["ChainSight"]
+    # Only miners whose answer was usable are credited.
+    assert payload["summary"]["responding_miners"] == ["ChainSight"]
     assert payload["summary"]["spend_usd"] == 0.01
 
 
@@ -100,11 +101,11 @@ async def test_proof_is_claimed_only_when_telegraph_returned_it(wired):
 
 @pytest.mark.asyncio
 async def test_a_recorded_disagreement_is_counted(wired):
-    clash = {"fields": {"status": {"telegraph": "failed", "rpc": "ok"}}, "authoritative": "json_rpc"}
+    clash = {"fields": {"status": {"telegraph": "failed", "rpc": "success"}}, "authoritative": "onchain"}
     await wired.save(receipt("NMS-PRIVATE", "TG-D", discrepancy=clash))
     payload = await main.get_case_telegraph("NMS-PRIVATE", OWNER)
     assert payload["summary"]["discrepancies"] == 1
-    assert payload["receipts"][0]["discrepancy"]["authoritative"] == "json_rpc"
+    assert payload["receipts"][0]["discrepancy"]["authoritative"] == "onchain"
 
 
 @pytest.mark.asyncio
@@ -153,13 +154,13 @@ async def test_health_reports_telegraph_as_off_when_unconfigured(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_the_evidence_package_keeps_telegraph_on_its_own_plane(wired):
-    clash = {"fields": {"status": {"telegraph": "failed", "rpc": "ok"}}, "authoritative": "json_rpc"}
+    clash = {"fields": {"status": {"telegraph": "failed", "rpc": "success"}}, "authoritative": "onchain"}
     await wired.save(receipt("NMS-PRIVATE", "TG-1"))
     await wired.save(receipt("NMS-PRIVATE", "TG-2", discrepancy=clash))
     plane = await main.telegraph_evidence("NMS-PRIVATE")
     assert plane["call_count"] == 2
     assert plane["settled_spend_usd"] == 0.02
-    assert plane["disagreements_with_rpc"][0]["receipt_id"] == "TG-2"
+    assert plane["disagreements_with_chain_evidence"][0]["receipt_id"] == "TG-2"
     # The caveat travels with the evidence, not in a footnote somewhere else.
     assert "not evidence that an address is clean" in plane["boundary"]
     assert "not what is true on chain" in plane["boundary"]
