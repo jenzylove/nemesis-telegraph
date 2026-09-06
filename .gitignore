@@ -68,3 +68,4 @@ d-*.log
 
 # Local test-account credentials
 .judge-account.local
+p-*.log
