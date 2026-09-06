@@ -246,7 +246,7 @@ async function main() {
     evidence_boundary: "Real Telegraph-routed x402 call. NEMESIS JSON-RPC remains authoritative for blockchain facts."
   };
 
-  const outputPath = resolve(process.cwd(), "../../docs/evidence/telegraph-settled-smoke-2026-09-05.json");
+  const outputPath = resolve(process.cwd(), "telegraph-settled-smoke-replay.json");
   await writeFile(outputPath, JSON.stringify(evidence, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
   process.stdout.write(JSON.stringify({
     evidence_file: outputPath,

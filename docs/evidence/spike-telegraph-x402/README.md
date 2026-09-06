@@ -17,4 +17,5 @@ transaction, which was then reverified directly against the chain.
 
 To run it you need a funded Base Sepolia burner in `TELEGRAPH_EVM_PRIVATE_KEY`.
 `npm run quote` validates the live challenge without paying; `npm run pay`
-settles one real payment.
+settles one real payment and writes the result beside this file as
+`telegraph-settled-smoke-replay.json`, leaving the original evidence untouched.

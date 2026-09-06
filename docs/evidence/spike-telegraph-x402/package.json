@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit",
-    "quote": "tsx src/settled-smoke.ts --quote-only",
-    "pay": "tsx src/settled-smoke.ts"
+    "quote": "tsx settled-smoke.ts --quote-only",
+    "pay": "tsx settled-smoke.ts"
   },
   "dependencies": {
     "@x402/evm": "2.11.0",
