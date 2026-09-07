@@ -306,9 +306,8 @@ npm test
 ### 6. Deploy
 
 Three services, each with its own build file. They deploy under the
-`nemesis-telegraph-*` namespace and share nothing with the frozen original deployment —
-separate Firestore database, separate Pub/Sub topic, separate scheduler job, separate
-secrets.
+`nemesis-telegraph-*` namespace with a separate Firestore database, Pub/Sub topic,
+scheduler job, and secrets.
 
 ```bash
 # Telegraph payment gateway (deploys with no unauthenticated access)
@@ -338,22 +337,3 @@ curl -s https://nemesis-telegraph-api-h7bnd6kzfq-uc.a.run.app/health
 
 The `telegraph` block of that response shows gateway health, payer address, and today's
 spend against the ceiling — without exposing a secret.
-
----
-
-## Project lineage
-
-NEMESIS existed before this extension. It was already an autonomous incident-response
-system: wallet-first discovery, deterministic verification, multi-hop tracing, dormant
-branch monitoring and automatic resume.
-
-This repository continues that work from frozen commit
-[`d51a672`](https://github.com/jenzylove/nemesis/commit/d51a672ae631170609bd3c1f867cb8f5ef10375c)
-for Telegraph Hackathon Track 3. What Telegraph changed is not a feature bolted onto the
-side: external intelligence became an autonomous, paid, verifiable part of every evolving
-investigation, bought only when the chain evidence justifies the question and validated
-before it is allowed to count.
-
-The original [`jenzylove/nemesis`](https://github.com/jenzylove/nemesis) repository and
-its production deployment are untouched and still running. Their build files are not
-carried here, so nothing in this repository can accidentally deploy over them.
